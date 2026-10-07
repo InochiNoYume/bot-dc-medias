@@ -8,7 +8,7 @@ import {
 } from "../../modules/tickets/repository.js";
 import { buildTicketPanel } from "../../modules/tickets/panel.js";
 import { getTicketByChannel, listTicketLogs } from "../../modules/tickets/actions.js";
-import { getGuildSettings, setTicketArchiveCategory } from "../../database/repositories/guildRepository.js";
+import { setTicketArchiveCategory } from "../../database/repositories/guildRepository.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ticket").setDescription("Gestiona el sistema de tickets.")
