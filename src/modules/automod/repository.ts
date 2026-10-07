@@ -1,4 +1,52 @@
 import { supabase } from "../../database/supabase.js";
-export interface AutomodConfig { guild_id:string; enabled:boolean; bad_words:string[]; blocked_patterns:string[]; max_mentions:number; max_messages:number; message_window_seconds:number; action:"delete"|"timeout"; timeout_seconds:number; raid_enabled:boolean; raid_join_threshold:number; raid_window_seconds:number; raid_action:"alert"|"timeout"|"kick"; raid_timeout_seconds:number; raid_quarantine_role_id:string|null; raid_lockdown:boolean; }
-export async function getAutomodConfig(guildId:string):Promise<AutomodConfig|null>{const {data,error}=await supabase.from("guild_automod_configs").select("*").eq("guild_id",guildId).maybeSingle();if(error)throw error;return data as AutomodConfig|null;}
-export async function upsertAutomodConfig(guildId:string,patch:Partial<Omit<AutomodConfig,"guild_id">>):Promise<AutomodConfig>{const {data,error}=await supabase.from("guild_automod_configs").upsert({guild_id:guildId,...patch,updated_at:new Date().toISOString()},{onConflict:"guild_id"}).select("*").single();if(error)throw error;return data as AutomodConfig;}
+
+export interface AutomodConfig {
+  guild_id: string;
+  enabled: boolean;
+  bad_words: string[];
+  blocked_patterns: string[];
+  max_mentions: number;
+  max_messages: number;
+  message_window_seconds: number;
+  action: "delete" | "timeout";
+  timeout_seconds: number;
+  trusted_role_ids: string[];
+  raid_enabled: boolean;
+  raid_join_threshold: number;
+  raid_window_seconds: number;
+  raid_action: "alert" | "timeout" | "kick";
+  raid_timeout_seconds: number;
+  raid_quarantine_role_id: string | null;
+  raid_lockdown: boolean;
+  raid_active_until: string | null;
+  raid_started_at: string | null;
+  raid_join_count: number;
+}
+
+export async function getAutomodConfig(guildId: string): Promise<AutomodConfig | null> {
+  const { data, error } = await supabase
+    .from("guild_automod_configs")
+    .select("*")
+    .eq("guild_id", guildId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as AutomodConfig | null;
+}
+
+export async function upsertAutomodConfig(
+  guildId: string,
+  patch: Partial<Omit<AutomodConfig, "guild_id">>,
+): Promise<AutomodConfig> {
+  const { data, error } = await supabase
+    .from("guild_automod_configs")
+    .upsert(
+      { guild_id: guildId, ...patch, updated_at: new Date().toISOString() },
+      { onConflict: "guild_id" },
+    )
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data as AutomodConfig;
+}
