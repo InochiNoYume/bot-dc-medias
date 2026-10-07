@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ChannelType, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle, type Client, type GuildMember, type Interaction, type TextChannel } from "discord.js";
+import { ActionRowBuilder, ChannelType, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle, type Client, type Guild, type GuildMember, type Interaction, type TextChannel } from "discord.js";
 import { commands } from "../commands/index.js";
 import { createTicketCategory, createTicketRecord, countOpenTicketsForUser, getTicketCategory } from "../modules/tickets/repository.js";
 import { addTicketMember, createTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket, touchTicketActivity } from "../modules/tickets/actions.js";
@@ -7,8 +7,25 @@ import { TICKET_OPEN_PREFIX } from "../modules/tickets/panel.js";
 import { createTicketTranscript } from "../modules/tickets/transcripts.js";
 import { logTicketAction } from "../modules/tickets/actions.js";
 import { getGuildSettings } from "../database/repositories/guildRepository.js";
+import { sendGuildActionLog } from "../modules/logging/service.js";
 
 const commandMap = new Map(commands.map((command) => [command.data.name, command]));
+
+
+async function logTicketActionAndDiscord(
+  guild: Guild,
+  input: { guildId: string; ticketId: string; actorId: string; action: string; details?: Record<string, unknown> },
+): Promise<void> {
+  await logTicketAction(input);
+  const details = input.details ? Object.entries(input.details).map(([key, value]) => ({ name: key, value: String(value), inline: true })) : [];
+  await sendGuildActionLog(
+    guild,
+    "ticket_action",
+    `Ticket: ${input.action}`,
+    `Se registró la acción **${input.action}** en el ticket.`,
+    [{ name: "Ticket", value: `#${input.ticketId}`, inline: true }, { name: "Actor", value: `<@${input.actorId}>`, inline: true }, ...details],
+  );
+}
 
 function isStaff(member: GuildMember, staffRoleIds: string[]): boolean {
   return member.permissions.has(PermissionFlagsBits.ManageGuild) || staffRoleIds.some((roleId) => member.roles.cache.has(roleId));
@@ -105,7 +122,7 @@ export function registerInteractionEvent(client: Client): void {
           await createTicketTranscript(ticket.id, interaction.guild.id, interaction.channel);
         }
         await updateTicket(ticket.id, { status: "closed", closedBy: interaction.user.id, closeReason: reason || null });
-        await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "closed", details: { reason: reason || null } });
+        await logTicketActionAndDiscord(interaction.guild, { guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "closed", details: { reason: reason || null } });
         if (interaction.channel?.type === ChannelType.GuildText) {
           await interaction.channel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: false });
           await refreshTicketMessage(interaction.channel, ticket.id);
@@ -164,6 +181,7 @@ export function registerInteractionEvent(client: Client): void {
             embeds: [ticketEmbed({ display_number: ticket.display_number, status: ticket.status, priority: ticket.priority, ownerId: ticket.owner_id, categoryName: category.name, claimedBy: ticket.claimed_by })],
             components: ticketControls(ticket.id, ticket.status),
           });
+          await sendGuildActionLog(interaction.guild, "ticket_action", "Ticket creado", `Se creó el ticket #${ticket.display_number ?? ticket.id}.`, [{ name: "Usuario", value: `<@${interaction.user.id}>`, inline: true }, { name: "Categoría", value: category.name, inline: true }]);
           await interaction.reply({ content: `Tu ticket fue creado: <#${channel.id}>`, ephemeral: true });
         } catch (error) {
           await channel.delete().catch(() => undefined);
@@ -268,6 +286,7 @@ export function registerInteractionEvent(client: Client): void {
           if (ticket.status !== "closed") { await interaction.reply({ content: "El ticket todavía está abierto.", ephemeral: true }); return; }
           const rating = Number(interaction.values[0]);
           await createTicketRating({ ticketId: ticket.id, guildId: interaction.guild.id, userId: interaction.user.id, rating });
+          await sendGuildActionLog(interaction.guild, "ticket_rating", "Valoración de ticket", `El ticket #${ticket.display_number ?? ticket.id} recibió una valoración de **${rating}/5**.`, [{ name: "Usuario", value: `<@${interaction.user.id}>`, inline: true }]);
           await interaction.update({ content: "Gracias por tu valoración.", components: [] });
           return;
         }
