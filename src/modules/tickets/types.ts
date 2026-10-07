@@ -31,4 +31,5 @@ export interface TicketRecord {
   closed_by: string | null;
   close_reason: string | null;
   archived_at: string | null;
+  last_activity_at: string;
 }
