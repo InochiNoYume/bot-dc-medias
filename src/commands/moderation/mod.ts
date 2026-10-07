@@ -58,6 +58,15 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const subcommand = interaction.options.getSubcommand();
 
   if (["limpiar", "slowmode", "bloquear", "desbloquear", "nick"].includes(subcommand)) {
+    const requiredPermission = subcommand === "limpiar"
+      ? PermissionFlagsBits.ManageMessages
+      : subcommand === "nick"
+        ? PermissionFlagsBits.ManageNicknames
+        : PermissionFlagsBits.ManageChannels;
+    if (!member.permissions.has(requiredPermission) && !member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+      await interaction.reply({ content: "No tienes el permiso necesario para esta acción.", ephemeral: true });
+      return;
+    }
     const channel = interaction.channel;
     if (!channel || !channel.isTextBased() || channel.isDMBased()) {
       await interaction.reply({ content: "Este comando requiere un canal de texto del servidor.", ephemeral: true });
