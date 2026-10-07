@@ -17,8 +17,6 @@ export async function updateTicket(ticketId: string, changes: {
   status?: TicketStatus;
   priority?: TicketPriority;
   claimedBy?: string | null;
-  expectedClaimedBy?: string | null;
-  expectedLastActivityAt?: string;
   closedBy?: string | null;
   closeReason?: string | null;
   archivedAt?: string | null;
