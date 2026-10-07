@@ -42,6 +42,43 @@ export async function updateTicket(ticketId: string, changes: {
   return data as TicketRecord;
 }
 
+export async function transitionTicket(input: {
+  ticketId: string;
+  fromStatuses: TicketStatus[];
+  toStatus: TicketStatus;
+  claimedBy?: string | null;
+  closedBy?: string | null;
+  closeReason?: string | null;
+}): Promise<TicketRecord> {
+  const payload: Record<string, unknown> = { status: input.toStatus };
+  if (input.toStatus === "claimed") {
+    payload.claimed_by = input.claimedBy ?? null;
+    payload.claimed_at = new Date().toISOString();
+  }
+  if (input.toStatus === "open") {
+    payload.claimed_by = null;
+    payload.closed_at = null;
+    payload.closed_by = null;
+    payload.close_reason = null;
+    payload.archived_at = null;
+  }
+  if (input.toStatus === "closed") {
+    payload.closed_at = new Date().toISOString();
+    payload.closed_by = input.closedBy ?? null;
+    payload.close_reason = input.closeReason ?? null;
+  }
+
+  let query = supabase.from("tickets").update(payload).eq("id", input.ticketId).in("status", input.fromStatuses);
+  if (input.claimedBy !== undefined) {
+    query = input.claimedBy === null ? query.is("claimed_by", null) : query.eq("claimed_by", input.claimedBy);
+  }
+
+  const { data, error } = await query.select("*").maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("TICKET_STATE_CONFLICT");
+  return data as TicketRecord;
+}
+
 export async function addTicketMember(ticketId: string, userId: string): Promise<void> {
   const { error } = await supabase.from("ticket_members").upsert({ ticket_id: ticketId, user_id: userId });
   if (error) throw error;
