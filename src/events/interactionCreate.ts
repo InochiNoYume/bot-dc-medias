@@ -196,7 +196,7 @@ export function registerInteractionEvent(client: Client): void {
           await interaction.reply({ content: "No pude identificar al bot dentro del servidor.", ephemeral: true });
           return;
         }
-        const channel = await interaction.guild.channels.create({
+        const requiredPermissions = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels];\n        if (!botMember.permissions.has(requiredPermissions)) {\n          await interaction.reply({ content: "El bot necesita Ver canales, Enviar mensajes, Leer historial y Gestionar canales para crear tickets.", ephemeral: true });\n          return;\n        }\n        const missingStaffRoles = category.staff_role_ids.filter((roleId) => !interaction.guild!.roles.cache.has(roleId));\n        if (missingStaffRoles.length) {\n          await interaction.reply({ content: `La categoría tiene ${missingStaffRoles.length} rol(es) de atención que ya no existen. Reconfigura la categoría antes de crear tickets.`, ephemeral: true });\n          return;\n        }\n        const channel = await interaction.guild.channels.create({
           name: `ticket-${interaction.user.username.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 20)}`,
           type: ChannelType.GuildText,
           ...(parentId ? { parent: parentId } : {}),
