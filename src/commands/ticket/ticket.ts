@@ -17,7 +17,7 @@ export const data = new SlashCommandBuilder()
     .addSubcommand((s) => s.setName("configurar").setDescription("Configura el canal y el rol de atención.")
       .addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true))
       .addChannelOption((o) => o.setName("canal").setDescription("Categoría de Discord donde se crearán los tickets.").addChannelTypes(ChannelType.GuildCategory))
-      .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets.")))
+      .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets."))))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
     .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
 
