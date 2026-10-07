@@ -1,4 +1,4 @@
-import { ChannelType, PermissionFlagsBits, type Client, type GuildMember, type Interaction, type TextChannel } from "discord.js";
+import { ActionRowBuilder, ChannelType, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle, type Client, type GuildMember, type Interaction, type TextChannel } from "discord.js";
 import { commands } from "../commands/index.js";
 import { createTicketCategory, createTicketRecord, countOpenTicketsForUser, getTicketCategory } from "../modules/tickets/repository.js";
 import { addTicketMember, createTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket } from "../modules/tickets/actions.js";
@@ -67,6 +67,37 @@ export function registerInteractionEvent(client: Client): void {
           priority, maxOpenPerUser: maxOpen, autoCloseMinutes: null,
         });
         await interaction.reply({ content: `Categoría creada: **${category.name}**\nID: \`${category.id}\``, ephemeral: true });
+        return;
+      }
+
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("ticket:close:")) {
+        if (!interaction.guild) return;
+        const ticketId = interaction.customId.slice("ticket:close:".length);
+        const ticket = await getTicketById(interaction.guild.id, ticketId);
+        if (!ticket) {
+          await interaction.reply({ content: "No se encontró el ticket.", ephemeral: true });
+          return;
+        }
+        const member = interaction.member as GuildMember;
+        const category = await getTicketCategory(interaction.guild.id, ticket.category_id);
+        const staff = isStaff(member, category?.staff_role_ids ?? []);
+        const owner = interaction.user.id === ticket.owner_id;
+        if (!staff && !owner) {
+          await interaction.reply({ content: "No tienes permiso para cerrar este ticket.", ephemeral: true });
+          return;
+        }
+        const reason = interaction.fields.getTextInputValue("reason").trim();
+        if (interaction.channel?.type === ChannelType.GuildText) {
+          await createTicketTranscript(ticket.id, interaction.guild.id, interaction.channel);
+        }
+        await updateTicket(ticket.id, { status: "closed", closedBy: interaction.user.id, closeReason: reason || null });
+        await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "closed", details: { reason: reason || null } });
+        if (interaction.channel?.type === ChannelType.GuildText) {
+          await interaction.channel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: false });
+          await refreshTicketMessage(interaction.channel, ticket.id);
+          await interaction.channel.send({ content: reason ? `El ticket ha sido cerrado. Motivo: **${reason}**` : "El ticket ha sido cerrado. El usuario puede valorar la atención recibida.", components: ratingMenu(ticket.id) });
+        }
+        await interaction.reply({ content: "Ticket cerrado correctamente.", ephemeral: true });
         return;
       }
 
@@ -152,17 +183,10 @@ export function registerInteractionEvent(client: Client): void {
         if (action === "close") {
           if (!staff && !owner) { await interaction.reply({ content: "No tienes permiso para cerrar este ticket.", ephemeral: true }); return; }
           if (ticket.status === "closed") { await interaction.reply({ content: "El ticket ya está cerrado.", ephemeral: true }); return; }
-          if (interaction.channel?.type === ChannelType.GuildText) {
-            await createTicketTranscript(ticket.id, interaction.guild.id, interaction.channel);
-          }
-          await updateTicket(ticket.id, { status: "closed", closedBy: interaction.user.id });
-          await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "closed" });
-          if (interaction.channel?.type === ChannelType.GuildText) {
-            await interaction.channel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: false });
-            await refreshTicketMessage(interaction.channel, ticket.id);
-            await interaction.channel.send({ content: "El ticket ha sido cerrado. El usuario puede valorar la atención recibida.", components: ratingMenu(ticket.id) });
-          }
-          await interaction.reply({ content: "Ticket cerrado correctamente.", ephemeral: true });
+          const modal = new ModalBuilder().setCustomId(`ticket:close:${ticket.id}`).setTitle("Cerrar ticket");
+          const reason = new TextInputBuilder().setCustomId("reason").setLabel("Motivo del cierre").setStyle(TextInputStyle.Paragraph).setPlaceholder("Indica brevemente el motivo del cierre...").setRequired(false).setMaxLength(500);
+          modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(reason));
+          await interaction.showModal(modal);
           return;
         }
 
