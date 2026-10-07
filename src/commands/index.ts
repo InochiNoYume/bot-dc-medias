@@ -4,6 +4,7 @@ import * as ticket from "./ticket/ticket.js";
 import * as moderation from "./moderation/mod.js";
 import * as logs from "./logs/logs.js";
 import * as automod from "./automod/automod.js";
+import * as creators from "./creators/creators.js";
 import type { Command } from "../core/command.js";
 
-export const commands: Command[] = [ping, setup, ticket, moderation, logs, automod];
+export const commands: Command[] = [ping, setup, ticket, moderation, logs, automod, creators];
