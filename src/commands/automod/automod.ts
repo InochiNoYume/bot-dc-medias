@@ -236,15 +236,16 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
   }
 
   if (subcommand === "cuarentena") {
-    const role = i.options.getRole("rol");
-    if (!role) {
+    const selectedRole = i.options.getRole("rol");
+    if (!selectedRole) {
       await upsertAutomodConfig(i.guild.id, { raid_quarantine_role_id: null });
       clearAutomodConfigCache(i.guild.id);
       await i.reply({ content: "Rol de cuarentena desactivado.", ephemeral: true });
       return;
     }
 
-    if (role.id === i.guild.id || role.managed || !role.editable) {
+    const role = i.guild.roles.cache.get(selectedRole.id);
+    if (!role || role.id === i.guild.id || role.managed || !role.editable) {
       await i.reply({
         content: "Ese rol no es válido o está por encima del bot.",
         ephemeral: true,
