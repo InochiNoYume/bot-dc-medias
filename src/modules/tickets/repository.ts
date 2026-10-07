@@ -66,7 +66,7 @@ export async function createTicketRecord(input: { guildId: string; channelId: st
   return data as TicketRecord;
 }
 
-export async function createTicketPanel(input: { guildId: string; channelId: string; messageId: string; title: string; description: string }): Promise<void> {
+export async function getTicketPanelByChannel(guildId: string, channelId: string): Promise<{ id: string; message_id: string } | null> {\n  const { data, error } = await supabase.from("ticket_panels").select("id,message_id").eq("guild_id", guildId).eq("channel_id", channelId).maybeSingle();\n  if (error) throw error;\n  return data as { id: string; message_id: string } | null;\n}\n\nexport async function createTicketPanel(input: { guildId: string; channelId: string; messageId: string; title: string; description: string }): Promise<void> {
   const { error } = await supabase.from("ticket_panels").insert({
     guild_id: input.guildId, channel_id: input.channelId, message_id: input.messageId, title: input.title, description: input.description,
   });
