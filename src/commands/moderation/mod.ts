@@ -1,5 +1,5 @@
 import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction, type GuildMember, type TextChannel } from "discord.js";
-import { getModerationCase, listModerationCases, createModerationNote, listModerationNotes } from "../../modules/moderation/repository.js";
+import { getModerationCase, listModerationCases, createModerationNote, listModerationNotes, getModerationChannelLock, setModerationChannelLock, deleteModerationChannelLock } from "../../modules/moderation/repository.js";
 import { executeModerationAction, hasModerationPermission } from "../../modules/moderation/service.js";
 
 const ACTIONS = ["warn", "timeout", "kick", "ban", "unban"] as const;
@@ -98,8 +98,44 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     if (subcommand === "bloquear" || subcommand === "desbloquear") {
       const locked = subcommand === "bloquear";
       const reason = interaction.options.getString("motivo")?.trim() || "Moderación de canal.";
-      await (channel as TextChannel).permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: locked ? false : null }, { reason });
-      await interaction.reply({ content: locked ? "Canal bloqueado para @everyone." : "Canal desbloqueado para @everyone.", ephemeral: true });
+      const textChannel = channel as TextChannel;
+      const existingLock = await getModerationChannelLock(interaction.guild.id, textChannel.id);
+      if (locked) {
+        if (existingLock) {
+          await interaction.reply({ content: "Este canal ya está bloqueado.", ephemeral: true });
+          return;
+        }
+        const everyoneOverwrite = textChannel.permissionOverwrites.cache.get(interaction.guild.roles.everyone.id);
+        const previousSendMessages = everyoneOverwrite
+          ? everyoneOverwrite.deny.has(PermissionFlagsBits.SendMessages)
+            ? false
+            : everyoneOverwrite.allow.has(PermissionFlagsBits.SendMessages)
+              ? true
+              : null
+          : null;
+        await setModerationChannelLock({
+          guildId: interaction.guild.id,
+          channelId: textChannel.id,
+          lockedBy: interaction.user.id,
+          previousSendMessages,
+          reason,
+        });
+        try {
+          await textChannel.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: false }, { reason });
+        } catch (error) {
+          await deleteModerationChannelLock(interaction.guild.id, textChannel.id).catch(() => undefined);
+          throw error;
+        }
+        await interaction.reply({ content: "Canal bloqueado para @everyone.", ephemeral: true });
+      } else {
+        if (!existingLock) {
+          await interaction.reply({ content: "Este canal no está bloqueado por el sistema de moderación.", ephemeral: true });
+          return;
+        }
+        await textChannel.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: existingLock.previous_send_messages }, { reason });
+        await deleteModerationChannelLock(interaction.guild.id, textChannel.id);
+        await interaction.reply({ content: "Canal desbloqueado y configuración anterior restaurada.", ephemeral: true });
+      }
       return;
     }
 
@@ -114,8 +150,24 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       await interaction.reply({ content: "No pude identificar al bot en el servidor.", ephemeral: true });
       return;
     }
-    if (targetMember.roles.highest.position >= bot.roles.highest.position && targetMember.id !== interaction.guild.ownerId) {
+    if (targetMember.id === interaction.user.id) {
+      await interaction.reply({ content: "No puedes cambiar tu propio apodo con este comando.", ephemeral: true });
+      return;
+    }
+    if (targetMember.id === interaction.guild.ownerId) {
+      await interaction.reply({ content: "No puedes cambiar el apodo del propietario del servidor.", ephemeral: true });
+      return;
+    }
+    if (targetMember.roles.highest.position >= bot.roles.highest.position) {
       await interaction.reply({ content: "Mi rol debe estar por encima del usuario.", ephemeral: true });
+      return;
+    }
+    if (targetMember.roles.highest.position >= member.roles.highest.position && member.id !== interaction.guild.ownerId) {
+      await interaction.reply({ content: "Tu rol debe estar por encima del usuario.", ephemeral: true });
+      return;
+    }
+    if (!bot.permissions.has(PermissionFlagsBits.ManageNicknames)) {
+      await interaction.reply({ content: "El bot necesita Gestionar apodos para realizar esta acción.", ephemeral: true });
       return;
     }
     const name = interaction.options.getString("nombre")?.trim() || null;
