@@ -17,7 +17,8 @@ export const data = new SlashCommandBuilder()
     .addSubcommand((s) => s.setName("configurar").setDescription("Configura el canal y el rol de atención.")
       .addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true))
       .addChannelOption((o) => o.setName("canal").setDescription("Categoría de Discord donde se crearán los tickets.").addChannelTypes(ChannelType.GuildCategory))
-      .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets."))))
+      .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets."))
+      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad antes del cierre automático (5-10080).").setMinValue(5).setMaxValue(10080)))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
     .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
 
@@ -46,6 +47,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         new ActionRowBuilder<TextInputBuilder>().addComponents(input("description", "Descripción", TextInputStyle.Paragraph)),
         new ActionRowBuilder<TextInputBuilder>().addComponents(input("priority", "Prioridad: low, normal, high, urgent", TextInputStyle.Short, "normal")),
         new ActionRowBuilder<TextInputBuilder>().addComponents(input("maxOpen", "Máximo de tickets abiertos por usuario", TextInputStyle.Short, "1")),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(input("autoClose", "Cierre automático en minutos (5-10080, 0 = desactivado)", TextInputStyle.Short, "0")),
       );
       await interaction.showModal(modal);
       return;
@@ -60,7 +62,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       }
       const discordCategory = interaction.options.getChannel("canal");
       const role = interaction.options.getRole("rol");
-      if (!discordCategory && !role) {
+      const autoCloseMinutes = interaction.options.getInteger("cierre");
+      if (!discordCategory && !role && autoCloseMinutes === null) {
         await interaction.reply({ content: "Debes indicar al menos un canal de categoría o un rol.", ephemeral: true });
         return;
       }
@@ -72,9 +75,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       const updated = await updateTicketCategoryConfig(interaction.guild.id, category.id, {
         discordCategoryId: discordCategory?.id ?? category.discord_category_id,
         staffRoleIds,
+        autoCloseMinutes: autoCloseMinutes ?? category.auto_close_minutes,
       });
       await interaction.reply({
-        content: `Configuración actualizada para **${updated.name}**.\nCategoría de Discord: ${updated.discord_category_id ? `<#${updated.discord_category_id}>` : "Sin configurar"}\nRoles de atención: ${updated.staff_role_ids.length ? updated.staff_role_ids.map((roleId) => `<@&${roleId}>`).join(", ") : "Ninguno"}`,
+        content: `Configuración actualizada para **${updated.name}**.\nCategoría de Discord: ${updated.discord_category_id ? `<#${updated.discord_category_id}>` : "Sin configurar"}\nRoles de atención: ${updated.staff_role_ids.length ? updated.staff_role_ids.map((roleId) => `<@&${roleId}>`).join(", ") : "Ninguno"}\nCierre automático: ${updated.auto_close_minutes ? `${updated.auto_close_minutes} min` : "Desactivado"}`,
         ephemeral: true,
       });
       return;
