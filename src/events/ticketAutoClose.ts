@@ -3,6 +3,7 @@ import { listInactiveTickets } from "../modules/tickets/repository.js";
 import { createTicketTranscript } from "../modules/tickets/transcripts.js";
 import { logTicketAction, updateTicket } from "../modules/tickets/actions.js";
 import { ratingMenu } from "../modules/tickets/ui.js";
+import { getGuildSettings } from "../database/repositories/guildRepository.js";
 
 const INTERVAL_MS = 60_000;
 
@@ -33,6 +34,14 @@ async function processInactiveTickets(client: Client): Promise<void> {
     await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "auto_closed", details: { inactiveMinutes: minutes } });
 
     await textChannel.send({ content: "Este ticket se ha cerrado automáticamente por inactividad. El usuario puede valorar la atención recibida.", components: ratingMenu(ticket.id) });
+    const settings = await getGuildSettings(ticket.guild_id);
+    const archiveCategoryId = settings?.ticket_archive_category_id;
+    const archiveCategory = archiveCategoryId ? guild.channels.cache.get(archiveCategoryId) : undefined;
+    if (archiveCategory?.type === ChannelType.GuildCategory) {
+      await textChannel.setParent(archiveCategory.id, { lockPermissions: false });
+      await updateTicket(ticket.id, { archivedAt: new Date().toISOString() });
+      await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "archived", details: { categoryId: archiveCategory.id } });
+    }
   }
 }
 
