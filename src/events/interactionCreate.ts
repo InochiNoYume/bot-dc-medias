@@ -263,6 +263,22 @@ export function registerInteractionEvent(client: Client): void {
         }
       }
 
+      if (interaction.isStringSelectMenu() && interaction.customId === "logs:events") {
+        if (!interaction.guild || !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+          await interaction.reply({ content: "Necesitas el permiso Gestionar servidor.", ephemeral: true });
+          return;
+        }
+        const { getGuildLogConfig, setGuildLogConfig } = await import("../database/repositories/logRepository.js");
+        const config = await getGuildLogConfig(interaction.guild.id);
+        if (!config?.channel_id) {
+          await interaction.update({ content: "Los registros no están configurados.", components: [] });
+          return;
+        }
+        await setGuildLogConfig(interaction.guild.id, config.channel_id, interaction.values);
+        await interaction.update({ content: `Eventos de registros actualizados. Activos: **${interaction.values.length}**.`, components: [] });
+        return;
+      }
+
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith("ticket:")) {
         const [, action, maybeMode, maybeTicketId] = interaction.customId.split(":");
         const ticketId = maybeTicketId ?? maybeMode;
