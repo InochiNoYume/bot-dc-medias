@@ -18,6 +18,7 @@ export interface TicketRecord {
   id: string;
   guild_id: string;
   ticket_number: number;
+  display_number: number | null;
   channel_id: string;
   owner_id: string;
   category_id: string;
