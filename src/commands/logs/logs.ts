@@ -3,7 +3,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
-  type TextChannel,
+  type TextChannel,\n  type StringSelectMenuBuilder,
 } from "discord.js";
 import {
   getGuildLogConfig,
@@ -82,7 +82,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       value: event,
       default: config.enabled_events.includes(event),
     }));
-    const { StringSelectMenuBuilder, ActionRowBuilder } = await import("discord.js");
+    const { ActionRowBuilder } = await import("discord.js");
     const menu = new StringSelectMenuBuilder()
       .setCustomId("logs:events")
       .setPlaceholder("Selecciona los eventos activos")
