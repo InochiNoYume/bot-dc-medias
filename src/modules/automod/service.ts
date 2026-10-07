@@ -5,8 +5,8 @@ const buckets=new Map<string,number[]>(); const joins=new Map<string,number[]>()
 const normalize=(s:string)=>s.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
 async function getCachedAutomodConfig(guildId:string):Promise<AutomodConfig|null>{const cached=configCache.get(guildId);if(cached&&cached.expires>Date.now())return cached.config;const config=await getAutomodConfig(guildId);configCache.set(guildId,{config,expires:Date.now()+15000});return config;}
 function match(content:string,list:string[]):string|null{const n=normalize(content);for(const raw of list){const p=raw.trim();if(!p)continue;try{if(new RegExp(p,"i").test(content)||n.includes(normalize(p)))return p;}catch{if(n.includes(normalize(p)))return p;}}return null;}
-function spam(message:Message,max:number,seconds:number){const key=message.guildId+":"+message.author.id,now=Date.now(),b=(buckets.get(key)||[]).filter(t=>now-t<seconds*1000);if(b.length>=max)b=b.slice(-max+1);b.push(now);buckets.set(key,b);return b.length>=max;}
-function raid(guildId:string,max:number,seconds:number){const now=Date.now(),b=(joins.get(guildId)||[]).filter(t=>now-t<seconds*1000);if(b.length>=max)b=b.slice(-max+1);b.push(now);joins.set(guildId,b);return b.length>=max;}
+function spam(message:Message,max:number,seconds:number){const key=message.guildId+":"+message.author.id,now=Date.now();let b=(buckets.get(key)||[]).filter(t=>now-t<seconds*1000);if(b.length>=max)b=b.slice(-max+1);b.push(now);buckets.set(key,b);return b.length>=max;}
+function raid(guildId:string,max:number,seconds:number){const now=Date.now();let b=(joins.get(guildId)||[]).filter(t=>now-t<seconds*1000);if(b.length>=max)b=b.slice(-max+1);b.push(now);joins.set(guildId,b);return b.length>=max;}
 async function punish(message:Message,reason:string,timeout:number){if(message.deletable)await message.delete().catch(()=>undefined);if(timeout&&message.member?.moderatable)await message.member.timeout(timeout*1000,"AutoMod: "+reason).catch(()=>undefined);if(message.guild)await sendGuildActionLog(message.guild,"moderation_action","AutoMod", "Se detectó: **"+reason+"**.",[{name:"Usuario",value:"<@"+message.author.id+">",inline:true},{name:"Canal",value:"<#"+message.channelId+">",inline:true}]);}
 async function releaseLockdown(guildId:string,guild:GuildMember["guild"]){
   const states=lockdowns.get(guildId); if(!states)return;
@@ -18,7 +18,7 @@ async function applyRaidAction(member:GuildMember, config: { raid_action:"alert"
   if(config.raid_action==="timeout"&&member.moderatable)await member.timeout(config.raid_timeout_seconds*1000,"Anti-raid").catch(()=>undefined);
   if(config.raid_action==="kick"&&member.kickable)await member.kick("Anti-raid: entrada durante detección").catch(()=>undefined);
   if(config.raid_lockdown&&!lockdowns.has(member.guild.id)){
-    const locked=new Map<string,unknown>();
+    const locked=new Map<string,{SendMessages:boolean|null}>();
     for(const channel of member.guild.channels.cache.values()){
       if(!channel.isTextBased()||!("permissionOverwrites" in channel))continue;
       const existing=channel.permissionOverwrites.cache.get(member.guild.roles.everyone.id);
