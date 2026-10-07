@@ -1,6 +1,6 @@
 import {
   ActionRowBuilder, EmbedBuilder, ModalBuilder, PermissionFlagsBits, SlashCommandBuilder,
-  TextInputBuilder, TextInputStyle, type ChatInputCommandInteraction, ChannelType,
+  TextInputBuilder, TextInputStyle, type ChatInputCommandInteraction, ChannelType, type TextChannel,
 } from "discord.js";
 import {
   createTicketPanel, deleteTicketCategory, listTicketCategories, createTicketCategory,
@@ -102,9 +102,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       await interaction.reply({ content: "El canal indicado no es válido.", ephemeral: true });
       return;
     }
-    const message = await channel.send(buildTicketPanel(categories));
+    const textChannel = channel as TextChannel;
+    const message = await textChannel.send(buildTicketPanel(categories));
     await createTicketPanel({
-      guildId: interaction.guild.id, channelId: channel.id, messageId: message.id,
+      guildId: interaction.guild.id, channelId: textChannel.id, messageId: message.id,
       title: "Soporte", description: "Selecciona una categoría para abrir un ticket.",
     });
     await interaction.reply({ content: "Panel de tickets publicado correctamente.", ephemeral: true });
