@@ -32,6 +32,16 @@ export async function updateTicketCategoryConfig(guildId: string, categoryId: st
   return data as TicketCategory;
 }
 
+export async function countTicketsForCategory(guildId: string, categoryId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("guild_id", guildId)
+    .eq("category_id", categoryId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function deleteTicketCategory(guildId: string, categoryId: string): Promise<void> {
   const { error } = await supabase.from("ticket_categories").delete().eq("guild_id", guildId).eq("id", categoryId);
   if (error) throw error;
