@@ -10,6 +10,8 @@ import { getGuildSettings } from "../database/repositories/guildRepository.js";
 import { sendGuildActionLog } from "../modules/logging/service.js";
 
 const commandMap = new Map(commands.map((command) => [command.data.name, command]));
+const commandCooldowns = new Map<string, number>();
+const COMMAND_COOLDOWN_MS = 1500;
 
 
 async function logTicketActionAndDiscord(
@@ -58,6 +60,15 @@ export function registerInteractionEvent(client: Client): void {
       if (interaction.isChatInputCommand()) {
         const command = commandMap.get(interaction.commandName);
         if (!command) return;
+        const cooldownKey = `${interaction.user.id}:${interaction.commandName}`;
+        const now = Date.now();
+        const expiresAt = commandCooldowns.get(cooldownKey) ?? 0;
+        if (expiresAt > now) {
+          const seconds = Math.max(1, Math.ceil((expiresAt - now) / 1000));
+          await interaction.reply({ content: `Espera **${seconds}s** antes de volver a usar este comando.`, ephemeral: true });
+          return;
+        }
+        commandCooldowns.set(cooldownKey, now + COMMAND_COOLDOWN_MS);
         await command.execute(interaction);
         return;
       }
