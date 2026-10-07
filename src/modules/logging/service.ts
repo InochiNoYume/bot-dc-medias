@@ -263,19 +263,22 @@ export function registerLoggingEvents(client: Client): void {
   });
 
   client.on("inviteCreate", async (invite) => {
-    if (!invite.guild) return;
-    const actor = await getAuditExecutor(invite.guild, AuditLogEvent.InviteCreate, invite.code);
+    if (!invite.guild || !(("fetchAuditLogs" in invite.guild) && ("channels" in invite.guild))) return;
+    const guild = invite.guild as Guild;
+    const actor = await getAuditExecutor(guild, AuditLogEvent.InviteCreate, invite.code);
     const embed = new EmbedBuilder().setTitle("Invitación creada").setDescription("Se creó una invitación" + (invite.code ? " `" + invite.code + "`." : "."));
-    addActor(embed, actor); await sendGuildLog(invite.guild, "invite_create", embed);
+    addActor(embed, actor);
+    await sendGuildLog(guild, "invite_create", embed);
   });
 
   client.on("inviteDelete", async (invite) => {
-    if (!invite.guild) return;
-    const actor = await getAuditExecutor(invite.guild, AuditLogEvent.InviteDelete, invite.code);
+    if (!invite.guild || !(("fetchAuditLogs" in invite.guild) && ("channels" in invite.guild))) return;
+    const guild = invite.guild as Guild;
+    const actor = await getAuditExecutor(guild, AuditLogEvent.InviteDelete, invite.code);
     const embed = new EmbedBuilder().setTitle("Invitación eliminada").setDescription("Se eliminó la invitación" + (invite.code ? " `" + invite.code + "`." : "."));
-    addActor(embed, actor); await sendGuildLog(invite.guild, "invite_delete", embed);
+    addActor(embed, actor);
+    await sendGuildLog(guild, "invite_delete", embed);
   });
-
   client.on("webhookUpdate", async (channel) => {
     if (!channel.guild) return;
     const actor = await getAuditExecutor(channel.guild, AuditLogEvent.WebhookUpdate, channel.id);
