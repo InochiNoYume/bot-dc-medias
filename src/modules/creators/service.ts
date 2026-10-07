@@ -73,12 +73,12 @@ async function fetchYouTube(feed: CreatorFeed): Promise<CreatorItem | null> {
   if (!response.ok) throw new Error("YouTube respondió " + response.status);
 
   const xml = await response.text();
-  const entry = xml.match(/<entry>[\\s\\S]*?<\\/entry>/)?.[0];
+  const entry = xml.match(/<entry>[\s\S]*?<\/entry>/)?.[0];
   if (!entry) return null;
 
-  const id = entry.match(/<yt:videoId>([^<]+)<\\/yt:videoId>/)?.[1];
-  const title = entry.match(/<title>([^<]+)<\\/title>/)?.[1];
-  const publishedAt = entry.match(/<published>([^<]+)<\\/published>/)?.[1] ?? null;
+  const id = entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/)?.[1];
+  const title = entry.match(/<title>([^<]+)<\/title>/)?.[1];
+  const publishedAt = entry.match(/<published>([^<]+)<\/published>/)?.[1] ?? null;
 
   if (!id || !title) return null;
 
