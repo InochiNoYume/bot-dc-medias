@@ -84,6 +84,15 @@ export async function createTicketPanel(input: { guildId: string; channelId: str
   if (error) throw error;
 }
 
+export async function updateTicketPanelMessage(guildId: string, panelId: string, messageId: string): Promise<void> {
+  const { error } = await supabase
+    .from("ticket_panels")
+    .update({ message_id: messageId })
+    .eq("guild_id", guildId)
+    .eq("id", panelId);
+  if (error) throw error;
+}
+
 
 export async function listInactiveTickets(): Promise<Array<TicketRecord & { category: TicketCategory }>> {
   const { data, error } = await supabase
