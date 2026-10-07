@@ -4,7 +4,7 @@ import {
 } from "discord.js";
 import {
   createTicketPanel, deleteTicketCategory, listTicketCategories, createTicketCategory,
-  updateTicketCategoryConfig, getTicketCategory,
+  updateTicketCategoryConfig, getTicketCategory, countTicketsForCategory,
 } from "../../modules/tickets/repository.js";
 import { buildTicketPanel } from "../../modules/tickets/panel.js";
 import { getTicketByChannel, listTicketLogs } from "../../modules/tickets/actions.js";
@@ -93,7 +93,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       const role = interaction.options.getRole("rol");
       const autoCloseMinutes = interaction.options.getInteger("cierre");
       if (!discordCategory && !role && autoCloseMinutes === null) {
-        await interaction.reply({ content: "Debes indicar al menos un canal de categoría o un rol.", ephemeral: true });
+        await interaction.reply({ content: "Debes indicar al menos un cambio de configuración.", ephemeral: true });
         return;
       }
       if (discordCategory && discordCategory.type !== ChannelType.GuildCategory) {
@@ -114,7 +114,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }
 
     if (action === "eliminar") {
-      await deleteTicketCategory(interaction.guild.id, interaction.options.getString("id", true));
+      const categoryId = interaction.options.getString("id", true);
+      const ticketCount = await countTicketsForCategory(interaction.guild.id, categoryId);
+      if (ticketCount > 0) {
+        await interaction.reply({ content: `No puedes eliminar esta categoría porque tiene **${ticketCount}** ticket(s) asociados. Conserva la categoría para mantener el historial.`, ephemeral: true });
+        return;
+      }
+      await deleteTicketCategory(interaction.guild.id, categoryId);
       await interaction.reply({ content: "Categoría eliminada correctamente.", ephemeral: true });
       return;
     }
@@ -137,10 +143,15 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }
     const textChannel = channel as TextChannel;
     const message = await textChannel.send(buildTicketPanel(categories));
-    await createTicketPanel({
-      guildId: interaction.guild.id, channelId: textChannel.id, messageId: message.id,
-      title: "Soporte", description: "Selecciona una categoría para abrir un ticket.",
-    });
+    try {
+      await createTicketPanel({
+        guildId: interaction.guild.id, channelId: textChannel.id, messageId: message.id,
+        title: "Soporte", description: "Selecciona una categoría para abrir un ticket.",
+      });
+    } catch (error) {
+      await message.delete().catch(() => undefined);
+      throw error;
+    }
     await interaction.reply({ content: "Panel de tickets publicado correctamente.", ephemeral: true });
     return;
   }
