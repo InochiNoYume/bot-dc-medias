@@ -1,4 +1,4 @@
-import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction, type GuildMember } from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction, type GuildMember, type TextChannel } from "discord.js";
 import { getModerationCase, listModerationCases, createModerationNote, listModerationNotes } from "../../modules/moderation/repository.js";
 import { executeModerationAction, hasModerationPermission } from "../../modules/moderation/service.js";
 
@@ -31,7 +31,18 @@ export const data = new SlashCommandBuilder()
     .addUserOption((o) => o.setName("usuario").setDescription("Usuario objetivo.").setRequired(true))
     .addStringOption((o) => o.setName("texto").setDescription("Nota interna.").setRequired(true).setMaxLength(1000)))
   .addSubcommand((s) => s.setName("notas").setDescription("Muestra notas internas.")
-    .addUserOption((o) => o.setName("usuario").setDescription("Usuario objetivo.").setRequired(true)));
+    .addUserOption((o) => o.setName("usuario").setDescription("Usuario objetivo.").setRequired(true)))
+  .addSubcommand((s) => s.setName("limpiar").setDescription("Elimina mensajes recientes del canal.")
+    .addIntegerOption((o) => o.setName("cantidad").setDescription("Cantidad de mensajes.").setRequired(true).setMinValue(1).setMaxValue(100)))
+  .addSubcommand((s) => s.setName("slowmode").setDescription("Configura el modo lento del canal.")
+    .addIntegerOption((o) => o.setName("segundos").setDescription("Segundos entre mensajes.").setRequired(true).setMinValue(0).setMaxValue(21600)))
+  .addSubcommand((s) => s.setName("bloquear").setDescription("Bloquea temporalmente el canal.")
+    .addStringOption((o) => o.setName("motivo").setDescription("Motivo.").setMaxLength(500)))
+  .addSubcommand((s) => s.setName("desbloquear").setDescription("Desbloquea el canal.")
+    .addStringOption((o) => o.setName("motivo").setDescription("Motivo.").setMaxLength(500)))
+  .addSubcommand((s) => s.setName("nick").setDescription("Cambia el apodo de un usuario.")
+    .addUserOption((o) => o.setName("usuario").setDescription("Usuario objetivo.").setRequired(true))
+    .addStringOption((o) => o.setName("nombre").setDescription("Nuevo apodo. Vacío para restaurar.").setMaxLength(32)));
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) {
@@ -45,6 +56,64 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   const subcommand = interaction.options.getSubcommand();
+
+  if (["limpiar", "slowmode", "bloquear", "desbloquear", "nick"].includes(subcommand)) {
+    const channel = interaction.channel;
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      await interaction.reply({ content: "Este comando requiere un canal de texto del servidor.", ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "limpiar") {
+      if (!("bulkDelete" in channel)) {
+        await interaction.reply({ content: "Este canal no permite limpieza masiva.", ephemeral: true });
+        return;
+      }
+      const cantidad = interaction.options.getInteger("cantidad", true);
+      const deleted = await (channel as TextChannel).bulkDelete(cantidad, true);
+      await interaction.reply({ content: "Se eliminaron **" + deleted.size + "** mensajes.", ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "slowmode") {
+      if (!("setRateLimitPerUser" in channel)) {
+        await interaction.reply({ content: "Este canal no admite modo lento.", ephemeral: true });
+        return;
+      }
+      const seconds = interaction.options.getInteger("segundos", true);
+      await (channel as TextChannel).setRateLimitPerUser(seconds);
+      await interaction.reply({ content: seconds === 0 ? "Modo lento desactivado." : "Modo lento configurado en **" + seconds + " s**.", ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "bloquear" || subcommand === "desbloquear") {
+      const locked = subcommand === "bloquear";
+      const reason = interaction.options.getString("motivo")?.trim() || "Moderación de canal.";
+      await (channel as TextChannel).permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: locked ? false : null }, { reason });
+      await interaction.reply({ content: locked ? "Canal bloqueado para @everyone." : "Canal desbloqueado para @everyone.", ephemeral: true });
+      return;
+    }
+
+    const target = interaction.options.getUser("usuario", true);
+    const targetMember = await interaction.guild.members.fetch(target.id).catch(() => null);
+    if (!targetMember) {
+      await interaction.reply({ content: "No encontré al usuario dentro del servidor.", ephemeral: true });
+      return;
+    }
+    const bot = interaction.guild.members.me;
+    if (!bot) {
+      await interaction.reply({ content: "No pude identificar al bot en el servidor.", ephemeral: true });
+      return;
+    }
+    if (targetMember.roles.highest.position >= bot.roles.highest.position && targetMember.id !== interaction.guild.ownerId) {
+      await interaction.reply({ content: "Mi rol debe estar por encima del usuario.", ephemeral: true });
+      return;
+    }
+    const name = interaction.options.getString("nombre")?.trim() || null;
+    await targetMember.setNickname(name, "Moderación");
+    await interaction.reply({ content: name ? "Apodo actualizado correctamente." : "Apodo restaurado correctamente.", ephemeral: true });
+    return;
+  }
   if (subcommand === "historial") {
     const user = interaction.options.getUser("usuario", true);
     const cases = await listModerationCases(interaction.guild.id, user.id);
