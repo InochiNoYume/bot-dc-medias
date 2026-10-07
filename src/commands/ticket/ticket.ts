@@ -4,7 +4,7 @@ import {
 } from "discord.js";
 import {
   createTicketPanel, deleteTicketCategory, listTicketCategories, createTicketCategory,
-  updateTicketCategoryConfig, getTicketCategory, countTicketsForCategory, getTicketPanelByChannel,
+  updateTicketCategoryConfig, getTicketCategory, countTicketsForCategory, getTicketPanelByChannel, updateTicketPanelMessage,
 } from "../../modules/tickets/repository.js";
 import { buildTicketPanel } from "../../modules/tickets/panel.js";
 import { getTicketByChannel, listTicketLogs } from "../../modules/tickets/actions.js";
@@ -28,7 +28,8 @@ export const data = new SlashCommandBuilder()
       .addRoleOption((o) => o.setName("quitar_rol").setDescription("Rol de atención que se quitará."))
       .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Quita la categoría de Discord configurada."))))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
-    .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
+    .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true)))
+    .addSubcommand((s) => s.setName("reparar").setDescription("Repara el panel registrado en un canal.").addChannelOption((o) => o.setName("canal").setDescription("Canal del panel registrado.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) {
@@ -158,6 +159,37 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return;
     }
     const categories = await listTicketCategories(interaction.guild.id);
+    if (action === "reparar") {
+      const channel = interaction.options.getChannel("canal", true);
+      if (channel.type !== ChannelType.GuildText) {
+        await interaction.reply({ content: "El canal indicado no es válido.", ephemeral: true });
+        return;
+      }
+      const panel = await getTicketPanelByChannel(interaction.guild.id, channel.id);
+      if (!panel) {
+        await interaction.reply({ content: "No existe un panel registrado en ese canal.", ephemeral: true });
+        return;
+      }
+      if (!categories.length) {
+        await interaction.reply({ content: "No hay categorías de tickets habilitadas para reconstruir el panel.", ephemeral: true });
+        return;
+      }
+      if (categories.length > 25) {
+        await interaction.reply({ content: "Hay más de 25 categorías habilitadas. Reduce las categorías antes de reparar el panel.", ephemeral: true });
+        return;
+      }
+      const textChannel = channel as TextChannel;
+      const message = await textChannel.messages.fetch(panel.message_id).catch(() => null);
+      if (message) {
+        await message.edit(buildTicketPanel(categories));
+        await interaction.reply({ content: "Panel de tickets reparado correctamente.", ephemeral: true });
+        return;
+      }
+      const replacement = await textChannel.send(buildTicketPanel(categories));
+      await updateTicketPanelMessage(interaction.guild.id, panel.id, replacement.id);
+      await interaction.reply({ content: "El panel anterior no existía. Se creó uno nuevo y se actualizó el registro.", ephemeral: true });
+      return;
+    }
     if (!categories.length) {
       await interaction.reply({ content: "Primero debes crear al menos una categoría.", ephemeral: true });
       return;
@@ -165,6 +197,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     const channel = interaction.options.getChannel("canal", true);
     if (channel.type !== ChannelType.GuildText) {
       await interaction.reply({ content: "El canal indicado no es válido.", ephemeral: true });
+      return;
+    }
+    if (categories.length > 25) {
+      await interaction.reply({ content: "No puedes publicar un panel con más de 25 categorías habilitadas. Reduce las categorías antes de publicarlo.", ephemeral: true });
       return;
     }
     const textChannel = channel as TextChannel;
