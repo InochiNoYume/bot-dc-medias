@@ -1,6 +1,7 @@
 import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction, type GuildMember, type TextChannel } from "discord.js";
 import { getModerationCase, listModerationCases, createModerationNote, listModerationNotes, getModerationChannelLock, setModerationChannelLock, deleteModerationChannelLock } from "../../modules/moderation/repository.js";
 import { executeModerationAction, hasModerationPermission } from "../../modules/moderation/service.js";
+import { sendGuildActionLog } from "../../modules/logging/service.js";
 
 const ACTIONS = ["warn", "timeout", "kick", "ban", "unban"] as const;
 
@@ -80,6 +81,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       }
       const cantidad = interaction.options.getInteger("cantidad", true);
       const deleted = await (channel as TextChannel).bulkDelete(cantidad, true);
+      await sendGuildActionLog(interaction.guild, "moderation_action", "Mensajes eliminados", "<@" + interaction.user.id + "> eliminó **" + deleted.size + "** mensajes en <#" + channel.id + ">.", [
+        { name: "Solicitados", value: String(cantidad), inline: true },
+        { name: "Eliminados", value: String(deleted.size), inline: true },
+      ]);
       await interaction.reply({ content: "Se eliminaron **" + deleted.size + "** mensajes.", ephemeral: true });
       return;
     }
@@ -91,6 +96,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       }
       const seconds = interaction.options.getInteger("segundos", true);
       await (channel as TextChannel).setRateLimitPerUser(seconds);
+      await sendGuildActionLog(interaction.guild, "moderation_action", "Slowmode actualizado", "<@" + interaction.user.id + "> configuró el modo lento de <#" + channel.id + "> en **" + seconds + " s**.");
       await interaction.reply({ content: seconds === 0 ? "Modo lento desactivado." : "Modo lento configurado en **" + seconds + " s**.", ephemeral: true });
       return;
     }
@@ -126,6 +132,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
           await deleteModerationChannelLock(interaction.guild.id, textChannel.id).catch(() => undefined);
           throw error;
         }
+        await sendGuildActionLog(interaction.guild, "moderation_action", "Canal bloqueado", "<@" + interaction.user.id + "> bloqueó <#" + textChannel.id + "> para @everyone.", [{ name: "Motivo", value: reason }]);
         await interaction.reply({ content: "Canal bloqueado para @everyone.", ephemeral: true });
       } else {
         if (!existingLock) {
@@ -134,6 +141,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         }
         await textChannel.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: existingLock.previous_send_messages }, { reason });
         await deleteModerationChannelLock(interaction.guild.id, textChannel.id);
+        await sendGuildActionLog(interaction.guild, "moderation_action", "Canal desbloqueado", "<@" + interaction.user.id + "> desbloqueó <#" + textChannel.id + "> y restauró la configuración anterior.", [{ name: "Motivo", value: reason }]);
         await interaction.reply({ content: "Canal desbloqueado y configuración anterior restaurada.", ephemeral: true });
       }
       return;
@@ -172,6 +180,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }
     const name = interaction.options.getString("nombre")?.trim() || null;
     await targetMember.setNickname(name, "Moderación");
+    await sendGuildActionLog(interaction.guild, "moderation_action", "Apodo actualizado", "<@" + interaction.user.id + "> " + (name ? "cambió" : "restauró") + " el apodo de <@" + targetMember.id + ">.", [{ name: "Nuevo apodo", value: name ?? "Predeterminado", inline: true }]);
     await interaction.reply({ content: name ? "Apodo actualizado correctamente." : "Apodo restaurado correctamente.", ephemeral: true });
     return;
   }
