@@ -3,7 +3,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
-  type TextChannel,\n  StringSelectMenuBuilder,
+  type TextChannel,
 } from "discord.js";
 import {
   getGuildLogConfig,
