@@ -229,6 +229,14 @@ ID: \`${category.id}\``, ephemeral: true });
           await interaction.reply({ content: `Tu ticket fue creado: <#${channel.id}>`, ephemeral: true });
         } catch (error) {
           await channel.delete().catch(() => undefined);
+          if (error instanceof Error && error.message === "TICKET_LIMIT_REACHED") {
+            await interaction.reply({ content: "Ya alcanzaste el máximo de tickets abiertos para esta categoría.", ephemeral: true });
+            return;
+          }
+          if (error instanceof Error && error.message === "TICKET_CATEGORY_NOT_FOUND") {
+            await interaction.reply({ content: "Esta categoría ya no está disponible.", ephemeral: true });
+            return;
+          }
           throw error;
         }
         return;
