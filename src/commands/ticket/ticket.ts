@@ -26,7 +26,7 @@ export const data = new SlashCommandBuilder()
       .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets."))
       .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; usa 0 para desactivar (0-10080).").setMinValue(0).setMaxValue(10080))
       .addBooleanOption((o) => o.setName("quitar_rol").setDescription("Quita el rol de atención configurado."))
-      .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Quita la categoría de Discord configurada.")))
+      .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Quita la categoría de Discord configurada."))))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
     .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
 
