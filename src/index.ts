@@ -7,6 +7,7 @@ import { registerReadyEvent } from "./events/ready.js";
 import { verifyDatabaseConnection } from "./services/health.js";
 import { registerTicketActivityEvent } from "./events/ticketActivity.js";
 import { registerTicketAutoClose } from "./events/ticketAutoClose.js";
+import { registerLoggingEvents } from "./modules/logging/service.js";
 
 const client = new Client({
   intents: [
@@ -22,6 +23,7 @@ registerGuildCreateEvent(client);
 registerInteractionEvent(client);
 registerTicketActivityEvent(client);
 registerTicketAutoClose(client);
+registerLoggingEvents(client);
 
 async function bootstrap(): Promise<void> {
   await verifyDatabaseConnection();
