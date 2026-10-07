@@ -1,4 +1,4 @@
-import { EmbedBuilder, type Client, type Guild, type GuildChannel, type Message, type Role, type GuildMember, type PartialMessage, type TextChannel } from "discord.js";
+import { EmbedBuilder, type Client, type Guild, type GuildChannel, type Message, type Role, type GuildMember, type PartialGuildMember, type PartialMessage, type TextChannel } from "discord.js";
 import { getGuildLogConfig } from "../../database/repositories/logRepository.js";
 
 export const LOG_EVENTS = [
@@ -87,7 +87,7 @@ export async function sendGuildActionLog(
 }
 
 export function registerLoggingEvents(client: Client): void {
-  client.on("guildMemberAdd", async (member: GuildMember) => {
+  client.on("guildMemberAdd", async (member: GuildMember | PartialGuildMember) => {
     await sendGuildLog(member.guild, "member_join", new EmbedBuilder()
       .setTitle("Miembro ingresó")
       .setDescription(`<@${member.id}> (${member.user.tag}) ingresó al servidor.`)
@@ -135,14 +135,14 @@ export function registerLoggingEvents(client: Client): void {
       .addFields({ name: "Tipo", value: channel.type.toString(), inline: true }));
   });
 
-  client.on("channelDelete", async (channel: GuildChannel) => {
+  client.on("channelDelete", async (channel) => {\n    if (!("guild" in channel) || !channel.guild) return;
     await sendGuildLog(channel.guild, "channel_delete", new EmbedBuilder()
       .setTitle("Canal eliminado")
       .setDescription(`Se eliminó el canal #${channel.name}.`)
       .addFields({ name: "ID", value: channel.id, inline: true }));
   });
 
-  client.on("channelUpdate", async (oldChannel: GuildChannel, newChannel: GuildChannel) => {
+  client.on("channelUpdate", async (oldChannel, newChannel) => {\n    if (!("guild" in oldChannel) || !("guild" in newChannel) || !oldChannel.guild || !newChannel.guild) return;\n    if (oldChannel.isDMBased() || newChannel.isDMBased()) return;
     if (oldChannel.name === newChannel.name && oldChannel.parentId === newChannel.parentId) return;
     await sendGuildLog(newChannel.guild, "channel_update", new EmbedBuilder()
       .setTitle("Canal modificado")
