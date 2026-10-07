@@ -4,6 +4,7 @@ import { createTicketTranscript } from "../modules/tickets/transcripts.js";
 import { logTicketAction, updateTicket } from "../modules/tickets/actions.js";
 import { ratingMenu } from "../modules/tickets/ui.js";
 import { getGuildSettings } from "../database/repositories/guildRepository.js";
+import { sendGuildActionLog } from "../modules/logging/service.js";
 
 const INTERVAL_MS = 60_000;
 
@@ -24,6 +25,8 @@ async function processInactiveTickets(client: Client): Promise<void> {
     if (!channel || channel.type !== ChannelType.GuildText) {
       await updateTicket(ticket.id, { status: "closed", closedBy: client.user?.id ?? "system", closeReason: "Cierre automático por inactividad." });
       await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "auto_closed", details: { inactiveMinutes: minutes } });
+    await sendGuildActionLog(guild, "ticket_action", "Ticket cerrado automáticamente", `El ticket #${ticket.display_number ?? ticket.id} se cerró por inactividad.`, [{ name: "Inactividad", value: `${minutes} minutos`, inline: true }]);
+      await sendGuildActionLog(guild, "ticket_action", "Ticket cerrado automáticamente", `El ticket #${ticket.display_number ?? ticket.id} se cerró por inactividad.`, [{ name: "Inactividad", value: `${minutes} minutos`, inline: true }]);
       continue;
     }
 
@@ -41,6 +44,7 @@ async function processInactiveTickets(client: Client): Promise<void> {
       await textChannel.setParent(archiveCategory.id, { lockPermissions: false });
       await updateTicket(ticket.id, { archivedAt: new Date().toISOString() });
       await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "archived", details: { categoryId: archiveCategory.id } });
+      await sendGuildActionLog(guild, "ticket_action", "Ticket archivado", `El ticket #${ticket.display_number ?? ticket.id} fue archivado.`, [{ name: "Categoría", value: `<#${archiveCategory.id}>`, inline: true }]);
     }
   }
 }
