@@ -94,7 +94,7 @@ export function registerLoggingEvents(client: Client): void {
       .addFields({ name: "Usuario", value: `<@${member.id}>\n` + `${member.id}`, inline: true }));
   });
 
-  client.on("guildMemberRemove", async (member: GuildMember) => {
+  client.on("guildMemberRemove", async (member: GuildMember | PartialGuildMember) => {
     await sendGuildLog(member.guild, "member_leave", new EmbedBuilder()
       .setTitle("Miembro salió")
       .setDescription(`<@${member.id}> (${member.user.tag}) salió del servidor.`)
@@ -135,14 +135,17 @@ export function registerLoggingEvents(client: Client): void {
       .addFields({ name: "Tipo", value: channel.type.toString(), inline: true }));
   });
 
-  client.on("channelDelete", async (channel) => {\n    if (!("guild" in channel) || !channel.guild) return;
+  client.on("channelDelete", async (channel) => {
+    if (!("guild" in channel) || !channel.guild) return;
     await sendGuildLog(channel.guild, "channel_delete", new EmbedBuilder()
       .setTitle("Canal eliminado")
       .setDescription(`Se eliminó el canal #${channel.name}.`)
       .addFields({ name: "ID", value: channel.id, inline: true }));
   });
 
-  client.on("channelUpdate", async (oldChannel, newChannel) => {\n    if (!("guild" in oldChannel) || !("guild" in newChannel) || !oldChannel.guild || !newChannel.guild) return;\n    if (oldChannel.isDMBased() || newChannel.isDMBased()) return;
+  client.on("channelUpdate", async (oldChannel, newChannel) => {
+    if (!("guild" in oldChannel) || !("guild" in newChannel) || !oldChannel.guild || !newChannel.guild) return;
+    if (oldChannel.isDMBased() || newChannel.isDMBased()) return;
     if (oldChannel.name === newChannel.name && oldChannel.parentId === newChannel.parentId) return;
     await sendGuildLog(newChannel.guild, "channel_update", new EmbedBuilder()
       .setTitle("Canal modificado")
