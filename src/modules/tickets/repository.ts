@@ -22,10 +22,11 @@ export async function createTicketCategory(input: { guildId: string; name: strin
   return data as TicketCategory;
 }
 
-export async function updateTicketCategoryConfig(guildId: string, categoryId: string, changes: { discordCategoryId?: string | null; staffRoleIds?: string[] }): Promise<TicketCategory> {
+export async function updateTicketCategoryConfig(guildId: string, categoryId: string, changes: { discordCategoryId?: string | null; staffRoleIds?: string[]; autoCloseMinutes?: number | null }): Promise<TicketCategory> {
   const payload: Record<string, unknown> = {};
   if (changes.discordCategoryId !== undefined) payload.discord_category_id = changes.discordCategoryId;
   if (changes.staffRoleIds !== undefined) payload.staff_role_ids = changes.staffRoleIds;
+  if (changes.autoCloseMinutes !== undefined) payload.auto_close_minutes = changes.autoCloseMinutes;
   const { data, error } = await supabase.from("ticket_categories").update(payload).eq("guild_id", guildId).eq("id", categoryId).select("*").single();
   if (error) throw error;
   return data as TicketCategory;
