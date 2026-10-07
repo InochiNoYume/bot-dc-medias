@@ -5,6 +5,7 @@ import { registerInteractionEvent } from "./events/interactionCreate.js";
 import { registerGuildCreateEvent } from "./events/guildCreate.js";
 import { registerReadyEvent } from "./events/ready.js";
 import { verifyDatabaseConnection } from "./services/health.js";
+import { registerTicketActivityEvent } from "./events/ticketActivity.js";
 
 const client = new Client({
   intents: [
@@ -18,6 +19,7 @@ const client = new Client({
 registerReadyEvent(client);
 registerGuildCreateEvent(client);
 registerInteractionEvent(client);
+registerTicketActivityEvent(client);
 
 async function bootstrap(): Promise<void> {
   await verifyDatabaseConnection();
