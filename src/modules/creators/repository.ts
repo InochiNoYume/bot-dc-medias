@@ -1,6 +1,6 @@
 import { supabase } from "../../database/supabase.js";
 
-export type CreatorPlatform = "youtube" | "twitch" | "kick";
+export type CreatorPlatform = "youtube" | "twitch" | "kick" | "tiktok";
 
 export interface CreatorFeed {
   id: string;
