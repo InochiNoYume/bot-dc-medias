@@ -29,6 +29,15 @@ async function bootstrap(): Promise<void> {
   await client.login(env.discordToken);
 }
 
+async function shutdown(signal: string): Promise<void> {
+  console.log(`[SHUTDOWN] ${signal}`);
+  client.destroy();
+  process.exit(0);
+}
+
+process.once("SIGINT", () => void shutdown("SIGINT"));
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+
 bootstrap().catch((error: unknown) => {
   console.error("[BOOT ERROR]", error);
   process.exit(1);
