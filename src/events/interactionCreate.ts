@@ -125,7 +125,8 @@ export function registerInteractionEvent(client: Client): void {
           await interaction.reply({ content: "Ya alcanzaste el máximo de tickets abiertos para esta categoría.", ephemeral: true });
           return;
         }
-        const parent = category.discord_category_id && interaction.guild.channels.cache.get(category.discord_category_id);
+        const parent = category.discord_category_id ? interaction.guild.channels.cache.get(category.discord_category_id) : undefined;
+        const parentId = parent && typeof parent !== "string" && parent.type === ChannelType.GuildCategory ? parent.id : undefined;
         const botMember = interaction.guild.members.me;
         if (!botMember) {
           await interaction.reply({ content: "No pude identificar al bot dentro del servidor.", ephemeral: true });
@@ -134,7 +135,7 @@ export function registerInteractionEvent(client: Client): void {
         const channel = await interaction.guild.channels.create({
           name: `ticket-${interaction.user.username.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 20)}`,
           type: ChannelType.GuildText,
-          ...(parent?.type === ChannelType.GuildCategory ? { parent: parent.id } : {}),
+          ...(parentId ? { parent: parentId } : {}),
           permissionOverwrites: [
             { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
             { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
