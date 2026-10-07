@@ -10,6 +10,7 @@ export interface GuildSettingsRecord {
   locale: string;
   timezone: string;
   setup_completed: boolean;
+  ticket_archive_category_id: string | null;
   created_at: string;
   updated_at: string;
 }
