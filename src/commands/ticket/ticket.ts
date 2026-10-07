@@ -28,7 +28,7 @@ export const data = new SlashCommandBuilder()
       .addBooleanOption((o) => o.setName("quitar_rol").setDescription("Quita el rol de atención configurado."))
       .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Quita la categoría de Discord configurada.")))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
-    .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
+    .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true)));
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) {
