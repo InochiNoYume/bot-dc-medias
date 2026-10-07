@@ -7,9 +7,13 @@ import { getGuildSettings } from "../database/repositories/guildRepository.js";
 import { sendGuildActionLog } from "../modules/logging/service.js";
 
 const INTERVAL_MS = 60_000;
+let processing = false;
 
 async function processInactiveTickets(client: Client): Promise<void> {
-  const tickets = await listInactiveTickets();
+  if (processing) return;
+  processing = true;
+  try {
+    const tickets = await listInactiveTickets();
   const now = Date.now();
 
   for (const ticket of tickets) {
@@ -40,11 +44,15 @@ async function processInactiveTickets(client: Client): Promise<void> {
     const archiveCategoryId = settings?.ticket_archive_category_id;
     const archiveCategory = archiveCategoryId ? guild.channels.cache.get(archiveCategoryId) : undefined;
     if (archiveCategory?.type === ChannelType.GuildCategory) {
+      await textChannel.permissionOverwrites.edit(ticket.owner_id, { ViewChannel: false, SendMessages: false });
       await textChannel.setParent(archiveCategory.id, { lockPermissions: false });
       await updateTicket(ticket.id, { archivedAt: new Date().toISOString() });
       await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "archived", details: { categoryId: archiveCategory.id } });
       await sendGuildActionLog(guild, "ticket_action", "Ticket archivado", `El ticket #${ticket.display_number ?? ticket.id} fue archivado.`, [{ name: "Categoría", value: `<#${archiveCategory.id}>`, inline: true }]);
     }
+  }
+  } finally {
+    processing = false;
   }
 }
 
