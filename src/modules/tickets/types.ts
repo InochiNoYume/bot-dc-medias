@@ -28,4 +28,7 @@ export interface TicketRecord {
   created_at: string;
   claimed_at: string | null;
   closed_at: string | null;
+  closed_by: string | null;
+  close_reason: string | null;
+  archived_at: string | null;
 }
