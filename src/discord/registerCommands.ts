@@ -18,5 +18,10 @@ export async function registerCommands(): Promise<void> {
     { body: payload },
   );
 
-  console.log(`[COMMANDS] ${payload.length} comando(s) registrados globalmente.`);
+  await rest.put(
+    Routes.applicationGuildCommands(env.discordClientId, env.devGuildId),
+    { body: payload },
+  );
+
+  console.log(`[COMMANDS] ${payload.length} comando(s) registrados globalmente y en DEV.`);
 }
