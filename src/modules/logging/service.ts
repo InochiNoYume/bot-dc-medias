@@ -64,7 +64,7 @@ async function getAuditExecutor(guild: Guild, type: AuditLogEvent, targetId?: st
       return Boolean(target && "id" in target && target.id === targetId);
     });
     const executor = entry?.executor;
-    return executor ? { id: executor.id, tag: executor.tag ?? undefined } : null;
+    if (!executor) return null;\n    return executor.tag ? { id: executor.id, tag: executor.tag } : { id: executor.id };
   } catch {
     return null;
   }
