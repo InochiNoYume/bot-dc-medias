@@ -52,7 +52,7 @@ export async function removeTicketMember(ticketId: string, userId: string): Prom
   if (error) throw error;
 }
 
-export async function createTicketRating(input: { ticketId: string; guildId: string; userId: string; rating: number; comment?: string }): Promise<void> {
+export async function getTicketRating(ticketId: string): Promise<{ rating: number } | null> {\n  const { data, error } = await supabase.from("ticket_ratings").select("rating").eq("ticket_id", ticketId).maybeSingle();\n  if (error) throw error;\n  return data as { rating: number } | null;\n}\n\nexport async function createTicketRating(input: { ticketId: string; guildId: string; userId: string; rating: number; comment?: string }): Promise<void> {
   const { error } = await supabase.from("ticket_ratings").upsert({
     ticket_id: input.ticketId, guild_id: input.guildId, user_id: input.userId,
     rating: input.rating, comment: input.comment ?? null,
