@@ -7,10 +7,12 @@ import {
   updateTicketCategoryConfig, getTicketCategory,
 } from "../../modules/tickets/repository.js";
 import { buildTicketPanel } from "../../modules/tickets/panel.js";
+import { getTicketByChannel, listTicketLogs } from "../../modules/tickets/actions.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ticket").setDescription("Gestiona el sistema de tickets.")
   .addSubcommand((s) => s.setName("categorias").setDescription("Muestra las categorías disponibles."))
+  .addSubcommand((s) => s.setName("historial").setDescription("Muestra el historial del ticket actual."))
   .addSubcommandGroup((g) => g.setName("categoria").setDescription("Administra categorías.")
     .addSubcommand((s) => s.setName("crear").setDescription("Crea una categoría."))
     .addSubcommand((s) => s.setName("eliminar").setDescription("Elimina una categoría.").addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true)))
@@ -113,6 +115,24 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       title: "Soporte", description: "Selecciona una categoría para abrir un ticket.",
     });
     await interaction.reply({ content: "Panel de tickets publicado correctamente.", ephemeral: true });
+    return;
+  }
+
+  if (interaction.options.getSubcommand() === "historial") {
+    if (interaction.channel?.type !== ChannelType.GuildText) {
+      await interaction.reply({ content: "Este subcomando debe utilizarse dentro de un ticket.", ephemeral: true });
+      return;
+    }
+    const ticket = await getTicketByChannel(interaction.guild.id, interaction.channel.id);
+    if (!ticket) {
+      await interaction.reply({ content: "Este canal no corresponde a un ticket.", ephemeral: true });
+      return;
+    }
+    const logs = await listTicketLogs(ticket.id, 12);
+    const embed = new EmbedBuilder().setTitle(`Historial del Ticket #${ticket.display_number ?? ticket.ticket_number}`).setDescription(
+      logs.length ? logs.map((log) => `**${log.action}** · <@${log.actor_id}> · <t:${Math.floor(new Date(log.created_at).getTime() / 1000)}:R>`).join("\\n") : "No hay acciones registradas todavía.",
+    );
+    await interaction.reply({ embeds: [embed], ephemeral: true });
     return;
   }
 
