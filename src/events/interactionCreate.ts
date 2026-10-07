@@ -44,8 +44,9 @@ export function registerInteractionEvent(client: Client): void {
         return;
       }
 
-      if (interaction.guild && interaction.channel?.type === ChannelType.GuildText && (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu() || interaction.isModalSubmit())) {
-        const activeTicket = await getTicketByChannel(interaction.guild.id, interaction.channel.id);
+      const interactionChannel = interaction.channel;
+      if (interaction.guild && interactionChannel?.type === ChannelType.GuildText && (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu() || interaction.isModalSubmit())) {
+        const activeTicket = await getTicketByChannel(interaction.guild.id, interactionChannel.id);
         if (activeTicket && activeTicket.status !== "closed") {
           await touchTicketActivity(activeTicket.id);
         }
@@ -261,6 +262,7 @@ export function registerInteractionEvent(client: Client): void {
         const member = await interaction.guild.members.fetch(interaction.user.id);
         if (!isStaff(member, category.staff_role_ids)) { await interaction.reply({ content: "No tienes permiso para gestionar usuarios.", ephemeral: true }); return; }
         const targetId = interaction.values[0];
+        if (!targetId) { await interaction.reply({ content: "Debes seleccionar un usuario.", ephemeral: true }); return; }
         if (interaction.channel?.type !== ChannelType.GuildText) { await interaction.reply({ content: "El ticket no está en un canal de texto.", ephemeral: true }); return; }
         if (mode === "add") {
           await addTicketMember(ticket.id, targetId);
