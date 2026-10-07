@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ChannelType, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle, type Client, type GuildMember, type Interaction, type TextChannel } from "discord.js";
 import { commands } from "../commands/index.js";
 import { createTicketCategory, createTicketRecord, countOpenTicketsForUser, getTicketCategory } from "../modules/tickets/repository.js";
-import { addTicketMember, createTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket } from "../modules/tickets/actions.js";
+import { addTicketMember, createTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket, touchTicketActivity } from "../modules/tickets/actions.js";
 import { PRIORITY_LABELS, memberMenus, priorityMenu, ratingMenu, ticketControls, ticketEmbed } from "../modules/tickets/ui.js";
 import { TICKET_OPEN_PREFIX } from "../modules/tickets/panel.js";
 import { createTicketTranscript } from "../modules/tickets/transcripts.js";
@@ -42,6 +42,13 @@ export function registerInteractionEvent(client: Client): void {
         if (!command) return;
         await command.execute(interaction);
         return;
+      }
+
+      if (interaction.guild && interaction.channel?.type === ChannelType.GuildText && (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu() || interaction.isModalSubmit())) {
+        const activeTicket = await getTicketByChannel(interaction.guild.id, interaction.channel.id);
+        if (activeTicket && activeTicket.status !== "closed") {
+          await touchTicketActivity(activeTicket.id);
+        }
       }
 
       if (interaction.isModalSubmit() && interaction.customId === "ticket:category:create") {
