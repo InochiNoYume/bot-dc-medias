@@ -1,6 +1,7 @@
 import { type Client, type GuildMember, type Message, PermissionFlagsBits } from "discord.js";
 import {
   clearLockdownChannels,
+  deleteLockdownChannel,
   getAutomodConfig,
   getLockdownChannels,
   registerRaidJoin,
@@ -86,25 +87,35 @@ async function punish(message: Message, reason: string, timeoutSeconds: number):
 
 async function ensureLockdown(guild: GuildMember["guild"]): Promise<void> {
   const existing = await getLockdownChannels(guild.id);
-  const known = new Set(existing.map((entry) => entry.channel_id));
+  const existingByChannel = new Map(existing.map((entry) => [entry.channel_id, entry]));
 
   for (const channel of guild.channels.cache.values()) {
     if (!channel.isTextBased() || !("permissionOverwrites" in channel)) continue;
-    if (known.has(channel.id)) continue;
 
     const overwrite = channel.permissionOverwrites.cache.get(guild.roles.everyone.id);
     if (overwrite?.deny.has(PermissionFlagsBits.SendMessages)) continue;
 
-    const previous = overwrite?.allow.has(PermissionFlagsBits.SendMessages) ? true : null;
+    const existingState = existingByChannel.get(channel.id);
+    const previous = existingState?.previous_send_messages ?? (
+      overwrite?.allow.has(PermissionFlagsBits.SendMessages) ? true : null
+    );
 
     try {
+      if (!existingState) {
+        // Persist before touching Discord so a crash cannot leave an
+        // untracked lockdown that survives the process restart.
+        await saveLockdownChannel(guild.id, channel.id, previous);
+      }
+
       await channel.permissionOverwrites.edit(
         guild.roles.everyone,
         { SendMessages: false },
         { reason: "Anti-raid lockdown" },
       );
-      await saveLockdownChannel(guild.id, channel.id, previous);
     } catch {
+      if (!existingState) {
+        await deleteLockdownChannel(guild.id, channel.id).catch(() => undefined);
+      }
       // Ignore channels where the bot cannot modify the overwrite.
     }
   }
