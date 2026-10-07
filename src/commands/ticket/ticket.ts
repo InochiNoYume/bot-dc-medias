@@ -128,6 +128,11 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
     if (action === "eliminar") {
       const categoryId = interaction.options.getString("id", true);
+      const existingCategory = await getTicketCategory(interaction.guild.id, categoryId);
+      if (!existingCategory) {
+        await interaction.reply({ content: "No existe una categoría con ese ID.", ephemeral: true });
+        return;
+      }
       const ticketCount = await countTicketsForCategory(interaction.guild.id, categoryId);
       if (ticketCount > 0) {
         await interaction.reply({ content: `No puedes eliminar esta categoría porque tiene **${ticketCount}** ticket(s) asociados. Conserva la categoría para mantener el historial.`, ephemeral: true });
@@ -155,6 +160,11 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return;
     }
     const textChannel = channel as TextChannel;
+    const existingPanel = await getTicketPanelByChannel(interaction.guild.id, textChannel.id);
+    if (existingPanel) {
+      await interaction.reply({ content: "Este canal ya tiene un panel de tickets registrado. Si el mensaje fue eliminado, habrá que repararlo antes de publicar otro.", ephemeral: true });
+      return;
+    }
     const message = await textChannel.send(buildTicketPanel(categories));
     try {
       await createTicketPanel({
