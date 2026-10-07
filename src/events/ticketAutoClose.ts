@@ -34,8 +34,13 @@ async function processInactiveTickets(client: Client): Promise<void> {
     }
 
     const textChannel = channel as TextChannel;
+    try {
+      await transitionTicket({ ticketId: ticket.id, fromStatuses: ["open", "claimed"], toStatus: "closed", closedBy: client.user?.id ?? "system", closeReason: "Cierre automático por inactividad.", expectedLastActivityAt: ticket.last_activity_at });
+    } catch (error) {
+      if (error instanceof Error && error.message === "TICKET_STATE_CONFLICT") continue;
+      throw error;
+    }
     await createTicketTranscript(ticket.id, ticket.guild_id, textChannel);
-    await updateTicket(ticket.id, { status: "closed", closedBy: client.user?.id ?? "system", closeReason: "Cierre automático por inactividad." });
     await textChannel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: false });
     await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "auto_closed", details: { inactiveMinutes: minutes } });
 
