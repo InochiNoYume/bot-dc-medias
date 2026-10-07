@@ -28,7 +28,7 @@ async function fetchTwitch(feed: CreatorFeed): Promise<CreatorItem | null> {
   const match = html.match(/<meta property="og:title" content="([^"]+)"/i);
   const title = match?.[1] ? decodeXml(match[1]) : null;
   if (!title || /twitch/i.test(title) && /video/i.test(title) === false) return null;
-  const liveMatch = html.match(/"isLiveBroadcast":(true|false)/i);
+  const liveMatch = html.match(/"isLiveBroadcast"\s*:\s*(true|false)/i);
   if (liveMatch?.[1] !== "true") return null;
   return { id: "live:" + feed.external_id, title: title.replace(/\s+-\s+Twitch$/i, ""), url: "https://www.twitch.tv/" + encodeURIComponent(feed.external_id), publishedAt: new Date().toISOString() };
 }
