@@ -28,9 +28,8 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
   if (!feed.enabled) return;
   const item = await fetchLatest(feed);
   if (!item) { await updateCreatorFeed(feed.id,{last_checked_at:new Date().toISOString()}); return; }
+  if (!feed.last_external_item_id) { await updateCreatorFeed(feed.id,{last_external_item_id:item.id,last_checked_at:new Date().toISOString()}); return; }
   if (feed.last_external_item_id === item.id) { await updateCreatorFeed(feed.id,{last_checked_at:new Date().toISOString()}); return; }
-  const { wasSent } = await import("./state.js");
-  if (wasSent(feed.id,item.id)) { await updateCreatorFeed(feed.id,{last_external_item_id:item.id,last_checked_at:new Date().toISOString()}); return; }
   const channel = await client.channels.fetch(feed.channel_id).catch(()=>null);
   if (!channel || !channel.isTextBased() || channel.isDMBased()) return;
   const mention = feed.mention_role_id ? "<@&"+feed.mention_role_id+"> " : "";
