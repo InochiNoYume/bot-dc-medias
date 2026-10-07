@@ -1,6 +1,7 @@
 import { PermissionFlagsBits, type GuildMember, type User } from "discord.js";
 import type { ModerationAction } from "./types.js";
 import { createModerationCase, updateModerationCase } from "./repository.js";
+import { sendGuildActionLog } from "../logging/service.js";
 
 function ensureTargetCanBeModerated(target: GuildMember, moderator: GuildMember, bot: GuildMember): void {
   if (target.id === moderator.id) throw new Error("No puedes aplicar esta acción sobre ti mismo.");
@@ -30,9 +31,27 @@ export async function executeModerationAction(input: { action: ModerationAction;
       await guild.members.unban(input.targetUser.id, input.reason);
     }
     await updateModerationCase(record.id, "completed");
+    await sendGuildActionLog(
+      guild,
+      "moderation_action",
+      `Moderación #${record.case_number}`,
+      `Se ejecutó la acción **${input.action}** sobre <@${input.targetUser.id}>.`,
+      [
+        { name: "Usuario", value: `${input.targetUser.tag}\\n${input.targetUser.id}`, inline: true },
+        { name: "Moderador", value: `<@${input.moderator.id}>`, inline: true },
+        { name: "Motivo", value: input.reason || "Sin motivo indicado", inline: false },
+      ],
+    );
     return record.case_number;
   } catch (error) {
     await updateModerationCase(record.id, "failed", { error: error instanceof Error ? error.message : "Unknown error" }).catch(() => undefined);
+    await sendGuildActionLog(
+      guild,
+      "moderation_action",
+      `Moderación #${record.case_number} fallida`,
+      `No se pudo ejecutar **${input.action}** sobre <@${input.targetUser.id}>.`,
+      [{ name: "Error", value: error instanceof Error ? error.message : "Error desconocido", inline: false }],
+    );
     throw error;
   }
 }
