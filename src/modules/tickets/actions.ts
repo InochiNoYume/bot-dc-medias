@@ -58,3 +58,11 @@ export async function logTicketAction(input: { guildId: string; ticketId: string
   });
   if (error) throw error;
 }
+
+
+export async function touchTicketActivity(ticketId: string): Promise<void> {
+  const { error } = await supabase.from("tickets").update({
+    last_activity_at: new Date().toISOString(),
+  }).eq("id", ticketId).in("status", ["open", "claimed"]);
+  if (error) throw error;
+}
