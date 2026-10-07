@@ -1,10 +1,8 @@
-import {
-  Client,
-  GatewayIntentBits,
-} from "discord.js";
+import { Client, GatewayIntentBits } from "discord.js";
 import { env } from "./config/env.js";
 import { registerCommands } from "./discord/registerCommands.js";
 import { registerInteractionEvent } from "./events/interactionCreate.js";
+import { registerGuildCreateEvent } from "./events/guildCreate.js";
 import { registerReadyEvent } from "./events/ready.js";
 import { verifyDatabaseConnection } from "./services/health.js";
 
@@ -18,6 +16,7 @@ const client = new Client({
 });
 
 registerReadyEvent(client);
+registerGuildCreateEvent(client);
 registerInteractionEvent(client);
 
 async function bootstrap(): Promise<void> {
