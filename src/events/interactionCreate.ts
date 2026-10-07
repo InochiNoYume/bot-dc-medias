@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ChannelType, EmbedBuilder, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle, type Client, type Guild, type GuildMember, type Interaction, type TextChannel } from "discord.js";
 import { commands } from "../commands/index.js";
 import { createTicketCategory, createTicketRecord, countOpenTicketsForUser, getTicketCategory } from "../modules/tickets/repository.js";
-import { addTicketMember, createTicketRating, getTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket, touchTicketActivity } from "../modules/tickets/actions.js";
+import { addTicketMember, createTicketRating, getTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket, transitionTicket, touchTicketActivity } from "../modules/tickets/actions.js";
 import { PRIORITY_LABELS, memberMenus, priorityMenu, ratingMenu, ticketControls, ticketEmbed } from "../modules/tickets/ui.js";
 import { TICKET_OPEN_PREFIX } from "../modules/tickets/panel.js";
 import { createTicketTranscript } from "../modules/tickets/transcripts.js";
@@ -266,7 +266,7 @@ ID: \`${category.id}\``, ephemeral: true });
             await interaction.reply({ content: `Este ticket ya está siendo atendido por <@${ticket.claimed_by}>.`, ephemeral: true }); return;
           }
           const next = ticket.claimed_by === interaction.user.id ? { status: "open" as const, claimedBy: null } : { status: "claimed" as const, claimedBy: interaction.user.id };
-          await transitionTicket({ ticketId: ticket.id, fromStatuses: ["open", "claimed"], toStatus: next.status, claimedBy: next.status === "claimed" ? interaction.user.id : null });
+          await transitionTicket({ ticketId: ticket.id, fromStatuses: ["open", "claimed"], toStatus: next.status, claimedBy: next.status === "claimed" ? interaction.user.id : null, expectedClaimedBy: ticket.claimed_by });
           await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: next.status === "claimed" ? "claimed" : "unclaimed" });
           if (interaction.channel?.type === ChannelType.GuildText) await refreshTicketMessage(interaction.channel, ticket.id);
           await interaction.reply({ content: ticket.claimed_by === interaction.user.id ? "Has liberado el ticket." : "Has tomado el ticket.", ephemeral: true });
