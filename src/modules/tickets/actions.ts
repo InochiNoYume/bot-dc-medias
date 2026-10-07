@@ -66,3 +66,24 @@ export async function touchTicketActivity(ticketId: string): Promise<void> {
   }).eq("id", ticketId).in("status", ["open", "claimed"]);
   if (error) throw error;
 }
+
+
+export interface TicketLogRecord {
+  id: string;
+  ticket_id: string;
+  actor_id: string;
+  action: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function listTicketLogs(ticketId: string, limit = 10): Promise<TicketLogRecord[]> {
+  const { data, error } = await supabase
+    .from("ticket_logs")
+    .select("id,ticket_id,actor_id,action,details,created_at")
+    .eq("ticket_id", ticketId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as TicketLogRecord[];
+}
