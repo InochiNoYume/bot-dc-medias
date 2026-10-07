@@ -1,11 +1,17 @@
 import { type Client, type GuildMember, type Message, PermissionFlagsBits } from "discord.js";
-import { getAutomodConfig, upsertAutomodConfig, type AutomodConfig } from "./repository.js";
+import {
+  clearLockdownChannels,
+  getAutomodConfig,
+  getLockdownChannels,
+  registerRaidJoin,
+  saveLockdownChannel,
+  upsertAutomodConfig,
+  type AutomodConfig,
+} from "./repository.js";
 import { sendGuildActionLog } from "../logging/service.js";
 
 const buckets = new Map<string, number[]>();
-const joins = new Map<string, number[]>();
 const activeRaidTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const lockdowns = new Map<string, Map<string, { sendMessages: boolean | null }>>();
 const configCache = new Map<string, { config: AutomodConfig | null; expires: number }>();
 
 const normalize = (value: string): string =>
@@ -55,16 +61,6 @@ function spam(message: Message, max: number, seconds: number): boolean {
   return timestamps.length >= max;
 }
 
-function raidThresholdReached(guildId: string, max: number, seconds: number): boolean {
-  const now = Date.now();
-  const windowMs = seconds * 1000;
-  const timestamps = (joins.get(guildId) ?? []).filter((timestamp) => now - timestamp < windowMs);
-  timestamps.push(now);
-  joins.set(guildId, timestamps);
-  trimBuckets(joins, now, windowMs);
-  return timestamps.length >= max;
-}
-
 function isTrusted(member: GuildMember, config: AutomodConfig): boolean {
   return config.trusted_role_ids.some((roleId) => member.roles.cache.has(roleId));
 }
@@ -88,35 +84,66 @@ async function punish(message: Message, reason: string, timeoutSeconds: number):
   }
 }
 
-async function releaseLockdown(guildId: string, guild: GuildMember["guild"]): Promise<void> {
-  const states = lockdowns.get(guildId);
-  if (!states) return;
+async function ensureLockdown(guild: GuildMember["guild"]): Promise<void> {
+  const existing = await getLockdownChannels(guild.id);
+  const known = new Set(existing.map((entry) => entry.channel_id));
 
-  for (const [channelId, previous] of states) {
-    const channel = guild.channels.cache.get(channelId);
+  for (const channel of guild.channels.cache.values()) {
+    if (!channel.isTextBased() || !("permissionOverwrites" in channel)) continue;
+    if (known.has(channel.id)) continue;
+
+    const overwrite = channel.permissionOverwrites.cache.get(guild.roles.everyone.id);
+    if (overwrite?.deny.has(PermissionFlagsBits.SendMessages)) continue;
+
+    const previous = overwrite?.allow.has(PermissionFlagsBits.SendMessages) ? true : null;
+
+    try {
+      await channel.permissionOverwrites.edit(
+        guild.roles.everyone,
+        { SendMessages: false },
+        { reason: "Anti-raid lockdown" },
+      );
+      await saveLockdownChannel(guild.id, channel.id, previous);
+    } catch {
+      // Ignore channels where the bot cannot modify the overwrite.
+    }
+  }
+}
+
+async function releaseLockdown(guildId: string, guild: GuildMember["guild"]): Promise<void> {
+  const states = await getLockdownChannels(guildId);
+
+  for (const state of states) {
+    const channel = guild.channels.cache.get(state.channel_id);
     if (!channel || !("permissionOverwrites" in channel)) continue;
+
     await channel.permissionOverwrites
-      .edit(guild.roles.everyone, { SendMessages: previous.sendMessages }, { reason: "Anti-raid finalizado" })
+      .edit(guild.roles.everyone, { SendMessages: state.previous_send_messages }, { reason: "Anti-raid finalizado" })
       .catch(() => undefined);
   }
 
-  lockdowns.delete(guildId);
+  await clearLockdownChannels(guildId).catch(() => undefined);
 }
 
-async function persistRaidEnd(guildId: string): Promise<void> {
-  try {
-    const current = await getAutomodConfig(guildId);
-    if (!current?.raid_active_until) return;
-    if (new Date(current.raid_active_until).getTime() > Date.now()) return;
-    await upsertAutomodConfig(guildId, {
-      raid_active_until: null,
-      raid_started_at: null,
-      raid_join_count: 0,
-    });
-    clearAutomodConfigCache(guildId);
-  } catch (error) {
-    console.error("[RAID STATE ERROR]", error);
+async function finishRaid(guildId: string, guild: GuildMember["guild"]): Promise<void> {
+  const current = await getAutomodConfig(guildId);
+  if (!current) return;
+
+  const activeUntil = current.raid_active_until ? new Date(current.raid_active_until).getTime() : 0;
+  if (activeUntil > Date.now()) {
+    scheduleRaidEnd(guildId, guild, activeUntil);
+    return;
   }
+
+  await releaseLockdown(guildId, guild);
+
+  await upsertAutomodConfig(guildId, {
+    raid_active_until: null,
+    raid_started_at: null,
+    raid_join_count: 0,
+  });
+
+  clearAutomodConfigCache(guildId);
 }
 
 function scheduleRaidEnd(guildId: string, guild: GuildMember["guild"], until: number): void {
@@ -128,16 +155,20 @@ function scheduleRaidEnd(guildId: string, guild: GuildMember["guild"], until: nu
     guildId,
     setTimeout(() => {
       activeRaidTimers.delete(guildId);
-      void (async () => {
-        await releaseLockdown(guildId, guild);
-        await persistRaidEnd(guildId);
-      })();
+      void finishRaid(guildId, guild).catch((error: unknown) => {
+        console.error("[RAID FINISH ERROR]", error);
+      });
     }, delay),
   );
 }
 
-async function applyRaidAction(member: GuildMember, config: AutomodConfig): Promise<void> {
-  if (config.raid_quarantine_role_id) {
+async function applyRaidAction(
+  member: GuildMember,
+  config: AutomodConfig,
+  activeUntil: number,
+  joinCount: number,
+): Promise<void> {
+  if (config.raid_action !== "alert" && config.raid_quarantine_role_id) {
     const role = member.guild.roles.cache.get(config.raid_quarantine_role_id);
     if (role && role.id !== member.guild.id && !role.managed && role.editable && member.manageable) {
       await member.roles.add(role, "Anti-raid: entrada durante detección").catch(() => undefined);
@@ -152,36 +183,12 @@ async function applyRaidAction(member: GuildMember, config: AutomodConfig): Prom
     await member.kick("Anti-raid: entrada durante detección").catch(() => undefined);
   }
 
-  if (config.raid_lockdown && !lockdowns.has(member.guild.id)) {
-    const locked = new Map<string, { sendMessages: boolean | null }>();
-
-    for (const channel of member.guild.channels.cache.values()) {
-      if (!channel.isTextBased() || !("permissionOverwrites" in channel)) continue;
-      const existing = channel.permissionOverwrites.cache.get(member.guild.roles.everyone.id);
-      if (existing?.deny.has(PermissionFlagsBits.SendMessages)) continue;
-
-      const previous = existing?.allow.has(PermissionFlagsBits.SendMessages) ? true : null;
-      try {
-        await channel.permissionOverwrites.edit(
-          member.guild.roles.everyone,
-          { SendMessages: false },
-          { reason: "Anti-raid lockdown" },
-        );
-        locked.set(channel.id, { sendMessages: previous });
-      } catch {
-        // Ignore channels where the bot cannot modify the overwrite.
-      }
-    }
-
-    lockdowns.set(member.guild.id, locked);
+  if (config.raid_lockdown) {
+    await ensureLockdown(member.guild).catch((error: unknown) => {
+      console.error("[RAID LOCKDOWN ERROR]", error);
+    });
   }
 
-  const activeUntil = Date.now() + config.raid_window_seconds * 1000;
-  await upsertAutomodConfig(member.guild.id, {
-    raid_active_until: new Date(activeUntil).toISOString(),
-    raid_started_at: config.raid_started_at ?? new Date().toISOString(),
-    raid_join_count: config.raid_join_count + 1,
-  });
   clearAutomodConfigCache(member.guild.id);
   scheduleRaidEnd(member.guild.id, member.guild, activeUntil);
 
@@ -189,7 +196,7 @@ async function applyRaidAction(member: GuildMember, config: AutomodConfig): Prom
     member.guild,
     "moderation_action",
     "Protección anti-raid",
-    "Se activó la protección por entradas masivas.",
+    "Se activó o reforzó la protección por entradas masivas.",
     [
       {
         name: "Umbral",
@@ -197,13 +204,40 @@ async function applyRaidAction(member: GuildMember, config: AutomodConfig): Prom
         inline: true,
       },
       { name: "Acción", value: config.raid_action, inline: true },
+      { name: "Entradas", value: String(joinCount), inline: true },
       { name: "Usuario", value: "<@" + member.id + ">", inline: true },
       { name: "Lockdown", value: config.raid_lockdown ? "Activo" : "No", inline: true },
     ],
   );
 }
 
+async function recoverActiveRaids(client: Client): Promise<void> {
+  for (const guild of client.guilds.cache.values()) {
+    try {
+      const config = await getAutomodConfig(guild.id);
+      if (!config?.enabled || !config.raid_enabled || !config.raid_active_until) continue;
+
+      const until = new Date(config.raid_active_until).getTime();
+      if (until <= Date.now()) {
+        await finishRaid(guild.id, guild);
+        continue;
+      }
+
+      if (config.raid_lockdown) {
+        await ensureLockdown(guild);
+      }
+      scheduleRaidEnd(guild.id, guild, until);
+    } catch (error) {
+      console.error("[RAID RECOVERY ERROR]", error);
+    }
+  }
+}
+
 export function registerAutomodEvents(client: Client): void {
+  client.once("ready", () => {
+    void recoverActiveRaids(client);
+  });
+
   client.on("messageCreate", async (message) => {
     if (!message.guild || message.author.bot || !message.content) return;
 
@@ -235,21 +269,19 @@ export function registerAutomodEvents(client: Client): void {
       const config = await getCachedAutomodConfig(member.guild.id);
       if (!config?.enabled || !config.raid_enabled || isTrusted(member, config)) return;
 
-      const now = Date.now();
-      const persistedUntil = config.raid_active_until ? new Date(config.raid_active_until).getTime() : 0;
+      const result = await registerRaidJoin(
+        member.guild.id,
+        config.raid_join_threshold,
+        config.raid_window_seconds,
+      );
 
-      if (persistedUntil > now) {
-        await applyRaidAction(member, config);
-        return;
-      }
+      if (!result.active) return;
 
-      if (raidThresholdReached(member.guild.id, config.raid_join_threshold, config.raid_window_seconds)) {
-        await applyRaidAction(member, {
-          ...config,
-          raid_join_count: config.raid_join_count + config.raid_join_threshold,
-          raid_started_at: new Date().toISOString(),
-        });
-      }
+      const activeUntil = result.active_until
+        ? new Date(result.active_until).getTime()
+        : Date.now() + config.raid_window_seconds * 1000;
+
+      await applyRaidAction(member, config, activeUntil, result.join_count);
     } catch (error) {
       console.error("[RAID ERROR]", error);
     }
