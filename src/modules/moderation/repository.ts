@@ -40,3 +40,36 @@ export async function listModerationNotes(guildId: string, userId: string, limit
   if (error) throw error;
   return (data ?? []) as ModerationNote[];
 }
+
+
+export interface ModerationChannelLock {
+  guild_id: string;
+  channel_id: string;
+  locked_by: string;
+  previous_send_messages: boolean | null;
+  reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getModerationChannelLock(guildId: string, channelId: string): Promise<ModerationChannelLock | null> {
+  const { data, error } = await supabase.from("moderation_channel_locks").select("*").eq("guild_id", guildId).eq("channel_id", channelId).maybeSingle();
+  if (error) throw error;
+  return data as ModerationChannelLock | null;
+}
+
+export async function setModerationChannelLock(input: { guildId: string; channelId: string; lockedBy: string; previousSendMessages: boolean | null; reason: string }): Promise<void> {
+  const { error } = await supabase.from("moderation_channel_locks").upsert({
+    guild_id: input.guildId,
+    channel_id: input.channelId,
+    locked_by: input.lockedBy,
+    previous_send_messages: input.previousSendMessages,
+    reason: input.reason,
+  }, { onConflict: "channel_id" });
+  if (error) throw error;
+}
+
+export async function deleteModerationChannelLock(guildId: string, channelId: string): Promise<void> {
+  const { error } = await supabase.from("moderation_channel_locks").delete().eq("guild_id", guildId).eq("channel_id", channelId);
+  if (error) throw error;
+}
