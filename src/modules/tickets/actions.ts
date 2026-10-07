@@ -59,7 +59,7 @@ export async function getTicketRating(ticketId: string): Promise<{ rating: numbe
 }
 
 export async function createTicketRating(input: { ticketId: string; guildId: string; userId: string; rating: number; comment?: string }): Promise<void> {
-  const { error } = await supabase.from("ticket_ratings").upsert({
+  const { error } = await supabase.from("ticket_ratings").insert({
     ticket_id: input.ticketId, guild_id: input.guildId, user_id: input.userId,
     rating: input.rating, comment: input.comment ?? null,
   });
