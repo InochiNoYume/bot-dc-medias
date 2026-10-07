@@ -18,6 +18,7 @@ export async function updateTicket(ticketId: string, changes: {
   priority?: TicketPriority;
   claimedBy?: string | null;
   expectedClaimedBy?: string | null;
+  expectedLastActivityAt?: string;
   closedBy?: string | null;
   closeReason?: string | null;
   archivedAt?: string | null;
@@ -70,6 +71,9 @@ export async function transitionTicket(input: {
   }
 
   let query = supabase.from("tickets").update(payload).eq("id", input.ticketId).in("status", input.fromStatuses);
+  if (input.expectedLastActivityAt !== undefined) {
+    query = query.eq("last_activity_at", input.expectedLastActivityAt);
+  }
   if (input.expectedClaimedBy !== undefined) {
     query = input.expectedClaimedBy === null ? query.is("claimed_by", null) : query.eq("claimed_by", input.expectedClaimedBy);
   }
