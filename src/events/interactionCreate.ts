@@ -129,7 +129,8 @@ export function registerInteractionEvent(client: Client): void {
           guildId: interaction.guild.id, name, description, discordCategoryId: null, staffRoleIds: [],
           priority, maxOpenPerUser: maxOpen, autoCloseMinutes: autoCloseRaw === 0 ? null : autoCloseRaw,
         });
-        await interaction.reply({ content: `Categoría creada: **${category.name}**\nID: \`${category.id}\``, ephemeral: true });
+        await interaction.reply({ content: `Categoría creada: **${category.name}**
+ID: \`${category.id}\``, ephemeral: true });
         return;
       }
 
@@ -196,7 +197,17 @@ export function registerInteractionEvent(client: Client): void {
           await interaction.reply({ content: "No pude identificar al bot dentro del servidor.", ephemeral: true });
           return;
         }
-        const requiredPermissions = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels];\n        if (!botMember.permissions.has(requiredPermissions)) {\n          await interaction.reply({ content: "El bot necesita Ver canales, Enviar mensajes, Leer historial y Gestionar canales para crear tickets.", ephemeral: true });\n          return;\n        }\n        const missingStaffRoles = category.staff_role_ids.filter((roleId) => !interaction.guild!.roles.cache.has(roleId));\n        if (missingStaffRoles.length) {\n          await interaction.reply({ content: `La categoría tiene ${missingStaffRoles.length} rol(es) de atención que ya no existen. Reconfigura la categoría antes de crear tickets.`, ephemeral: true });\n          return;\n        }\n        const channel = await interaction.guild.channels.create({
+        const requiredPermissions = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels];
+        if (!botMember.permissions.has(requiredPermissions)) {
+          await interaction.reply({ content: "El bot necesita Ver canales, Enviar mensajes, Leer historial y Gestionar canales para crear tickets.", ephemeral: true });
+          return;
+        }
+        const missingStaffRoles = category.staff_role_ids.filter((roleId) => !interaction.guild!.roles.cache.has(roleId));
+        if (missingStaffRoles.length) {
+          await interaction.reply({ content: `La categoría tiene ${missingStaffRoles.length} rol(es) de atención que ya no existen. Reconfigura la categoría antes de crear tickets.`, ephemeral: true });
+          return;
+        }
+        const channel = await interaction.guild.channels.create({
           name: `ticket-${interaction.user.username.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 20)}`,
           type: ChannelType.GuildText,
           ...(parentId ? { parent: parentId } : {}),
