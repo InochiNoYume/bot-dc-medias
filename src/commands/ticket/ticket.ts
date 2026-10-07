@@ -18,7 +18,7 @@ export const data = new SlashCommandBuilder()
       .addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true))
       .addChannelOption((o) => o.setName("canal").setDescription("Categoría de Discord donde se crearán los tickets.").addChannelTypes(ChannelType.GuildCategory))
       .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets."))
-      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad antes del cierre automático (5-10080).").setMinValue(5).setMaxValue(10080)))
+      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad antes del cierre automático (5-10080).").setMinValue(5).setMaxValue(10080))))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
     .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
 
