@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  PermissionFlagsBits,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
 } from "discord.js";
@@ -10,7 +11,8 @@ import { ensureGuild, setSetupCompleted } from "../../database/repositories/guil
 
 export const data = new SlashCommandBuilder()
   .setName("setup")
-  .setDescription("Inicia la configuración del bot en este servidor.");
+  .setDescription("Inicia la configuración del bot en este servidor.")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString());
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) {
@@ -18,7 +20,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  if (!interaction.memberPermissions?.has("ManageGuild")) {
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
     await interaction.reply({ content: "Necesitas el permiso Gestionar servidor para utilizar este comando.", ephemeral: true });
     return;
   }
