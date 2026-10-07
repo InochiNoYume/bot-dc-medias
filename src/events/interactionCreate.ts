@@ -4,6 +4,7 @@ import { createTicketCategory, createTicketRecord, countOpenTicketsForUser, getT
 import { addTicketMember, createTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket } from "../modules/tickets/actions.js";
 import { PRIORITY_LABELS, memberMenus, priorityMenu, ratingMenu, ticketControls, ticketEmbed } from "../modules/tickets/ui.js";
 import { TICKET_OPEN_PREFIX } from "../modules/tickets/panel.js";
+import { createTicketTranscript } from "../modules/tickets/transcripts.js";
 
 const commandMap = new Map(commands.map((command) => [command.data.name, command]));
 
@@ -149,6 +150,9 @@ export function registerInteractionEvent(client: Client): void {
         if (action === "close") {
           if (!staff && !owner) { await interaction.reply({ content: "No tienes permiso para cerrar este ticket.", ephemeral: true }); return; }
           if (ticket.status === "closed") { await interaction.reply({ content: "El ticket ya está cerrado.", ephemeral: true }); return; }
+          if (interaction.channel?.type === ChannelType.GuildText) {
+            await createTicketTranscript(ticket.id, interaction.guild.id, interaction.channel);
+          }
           await updateTicket(ticket.id, { status: "closed" });
           if (interaction.channel?.type === ChannelType.GuildText) {
             await interaction.channel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: false });
