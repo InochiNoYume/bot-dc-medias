@@ -51,6 +51,21 @@ export async function setSetupCompleted(
   if (error) throw error;
 }
 
+export async function setTicketArchiveCategory(
+  guildId: string,
+  categoryId: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("guild_settings")
+    .update({
+      ticket_archive_category_id: categoryId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("guild_id", guildId);
+
+  if (error) throw error;
+}
+
 export async function listGuilds(): Promise<GuildRecord[]> {
   const { data, error } = await supabase
     .from("guilds")
