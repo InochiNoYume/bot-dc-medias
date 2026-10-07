@@ -62,6 +62,27 @@ export function registerInteractionEvent(client: Client): void {
         return;
       }
 
+      if (interaction.isButton() && interaction.customId === "setup:modules") {
+        if (!interaction.guild) {
+          await interaction.reply({ content: "Este botón solo funciona dentro de un servidor.", ephemeral: true });
+          return;
+        }
+        const embed = new (await import("discord.js")).EmbedBuilder()
+          .setTitle("Módulos disponibles")
+          .setDescription("La configuración del bot se realiza completamente desde Discord.")
+          .addFields(
+            { name: "Tickets", value: "Sistema avanzado de tickets, categorías, paneles, archivo y transcripciones.", inline: false },
+            { name: "Moderación", value: "Advertencias, sanciones, historial, notas y herramientas de gestión.", inline: false },
+            { name: "AutoMod y seguridad", value: "Filtros, spam, menciones y protección anti-raid.", inline: false },
+            { name: "Registros", value: "Registro configurable de eventos y acciones del servidor.", inline: false },
+            { name: "Creadores", value: "Notificaciones para publicaciones y transmisiones de creadores.", inline: false },
+          )
+          .setFooter({ text: "Usa los comandos de cada módulo para configurarlo." })
+          .setTimestamp();
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        return;
+      }
+
       const interactionChannelId = interaction.channelId;
       if (interaction.guild && interactionChannelId && (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu() || interaction.isModalSubmit())) {
         const activeTicket = await getTicketByChannel(interaction.guild.id, interactionChannelId);
