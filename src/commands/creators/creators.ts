@@ -6,7 +6,7 @@ export const data = new SlashCommandBuilder()
   .setDescription("Configura notificaciones de creadores.")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild.toString())
   .addSubcommand((s) => s.setName("agregar").setDescription("Añade un creador.")
-    .addStringOption((o) => o.setName("plataforma").setDescription("Plataforma").setRequired(true).addChoices({ name: "YouTube", value: "youtube" }, { name: "Twitch", value: "twitch" }, { name: "Kick", value: "kick" }))
+    .addStringOption((o) => o.setName("plataforma").setDescription("Plataforma").setRequired(true).addChoices({ name: "YouTube", value: "youtube" }, { name: "Twitch", value: "twitch" }, { name: "Kick", value: "kick" }, { name: "TikTok", value: "tiktok" }))
     .addStringOption((o) => o.setName("id").setDescription("ID del canal o creador").setRequired(true).setMaxLength(200))
     .addStringOption((o) => o.setName("nombre").setDescription("Nombre visible").setRequired(true).setMaxLength(100))
     .addChannelOption((o) => o.setName("canal").setDescription("Canal donde anunciar").addChannelTypes(ChannelType.GuildText).setRequired(true))
@@ -19,7 +19,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const subcommand = interaction.options.getSubcommand();
   if (subcommand === "agregar") {
     const channel = interaction.options.getChannel("canal", true);
-    const feed = await createCreatorFeed({ guildId: interaction.guild.id, platform: interaction.options.getString("plataforma", true) as "youtube" | "twitch" | "kick", externalId: interaction.options.getString("id", true), displayName: interaction.options.getString("nombre", true), channelId: channel.id, mentionRoleId: interaction.options.getRole("rol")?.id ?? null });
+    const feed = await createCreatorFeed({ guildId: interaction.guild.id, platform: interaction.options.getString("plataforma", true) as "youtube" | "twitch" | "kick" | "tiktok", externalId: interaction.options.getString("id", true), displayName: interaction.options.getString("nombre", true), channelId: channel.id, mentionRoleId: interaction.options.getRole("rol")?.id ?? null });
     await interaction.reply({ content: "Creador configurado. ID: " + feed.id + ".", ephemeral: true }); return;
   }
   const feeds = await listCreatorFeeds(interaction.guild.id);
