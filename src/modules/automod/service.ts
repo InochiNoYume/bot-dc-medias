@@ -1,7 +1,7 @@
 import { type Client, type Message, type GuildMember, PermissionFlagsBits } from "discord.js";
 import { getAutomodConfig } from "./repository.js";
 import { sendGuildActionLog } from "../logging/service.js";
-const buckets=new Map<string,number[]>(); const joins=new Map<string,number[]>(); const activeRaids=new Map<string,number>(); const lockdowns=new Map<string,Map<string,unknown>>();
+const buckets=new Map<string,number[]>(); const joins=new Map<string,number[]>(); const activeRaids=new Map<string,number>(); const lockdowns=new Map<string,Map<string,{SendMessages:boolean|null}>>();
 const normalize=(s:string)=>s.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
 function match(content:string,list:string[]):string|null{const n=normalize(content);for(const raw of list){const p=raw.trim();if(!p)continue;try{if(new RegExp(p,"i").test(content)||n.includes(normalize(p)))return p;}catch{if(n.includes(normalize(p)))return p;}}return null;}
 function spam(message:Message,max:number,seconds:number){const key=message.guildId+":"+message.author.id,now=Date.now(),b=(buckets.get(key)||[]).filter(t=>now-t<seconds*1000);b.push(now);buckets.set(key,b);return b.length>=max;}
@@ -9,7 +9,7 @@ function raid(guildId:string,max:number,seconds:number){const now=Date.now(),b=(
 async function punish(message:Message,reason:string,timeout:number){if(message.deletable)await message.delete().catch(()=>undefined);if(timeout&&message.member?.moderatable)await message.member.timeout(timeout*1000,"AutoMod: "+reason).catch(()=>undefined);if(message.guild)await sendGuildActionLog(message.guild,"moderation_action","AutoMod", "Se detectó: **"+reason+"**.",[{name:"Usuario",value:"<@"+message.author.id+">",inline:true},{name:"Canal",value:"<#"+message.channelId+">",inline:true}]);}
 async function releaseLockdown(guildId:string,guild:GuildMember["guild"]){
   const states=lockdowns.get(guildId); if(!states)return;
-  for(const [id,overwrite] of states){const channel=guild.channels.cache.get(id); if(channel&&"permissionOverwrites" in channel) await channel.permissionOverwrites.edit(guild.roles.everyone,overwrite as any,{reason:"Anti-raid finalizado"}).catch(()=>undefined);}
+  for(const [id,overwrite] of states){const channel=guild.channels.cache.get(id); if(channel&&"permissionOverwrites" in channel) await channel.permissionOverwrites.edit(guild.roles.everyone,overwrite,{reason:"Anti-raid finalizado"}).catch(()=>undefined);}
   lockdowns.delete(guildId);
 }
 async function applyRaidAction(member:GuildMember, config: { raid_action:"alert"|"timeout"|"kick"; raid_timeout_seconds:number; raid_quarantine_role_id:string|null; raid_lockdown:boolean }, threshold:number, window:number):Promise<void>{
