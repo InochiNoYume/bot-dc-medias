@@ -25,7 +25,7 @@ export const data = new SlashCommandBuilder()
       .addChannelOption((o) => o.setName("canal").setDescription("Categoría de Discord donde se crearán los tickets.").addChannelTypes(ChannelType.GuildCategory))
       .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets."))
       .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; usa 0 para desactivar (0-10080).").setMinValue(0).setMaxValue(10080))
-      .addBooleanOption((o) => o.setName("quitar_rol").setDescription("Quita el rol de atención configurado."))
+      .addRoleOption((o) => o.setName("quitar_rol").setDescription("Rol de atención que se quitará."))
       .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Quita la categoría de Discord configurada."))))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
     .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
@@ -95,14 +95,14 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       const role = interaction.options.getRole("rol");
       const autoCloseInput = interaction.options.getInteger("cierre");
       const autoCloseMinutes = autoCloseInput === 0 ? null : autoCloseInput;
-      const removeRole = interaction.options.getBoolean("quitar_rol") ?? false;
+      const removeRole = interaction.options.getRole("quitar_rol");
       const removeChannel = interaction.options.getBoolean("quitar_canal") ?? false;
       if (!discordCategory && !role && autoCloseInput === null && !removeRole && !removeChannel) {
         await interaction.reply({ content: "Debes indicar al menos un cambio de configuración.", ephemeral: true });
         return;
       }
       if (removeRole && role) {
-        await interaction.reply({ content: "No puedes indicar un rol y quitar el rol al mismo tiempo.", ephemeral: true });
+        await interaction.reply({ content: "No puedes añadir y quitar un rol en la misma configuración.", ephemeral: true });
         return;
       }
       if (removeChannel && discordCategory) {
@@ -113,7 +113,15 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         await interaction.reply({ content: "El canal indicado debe ser una categoría de Discord.", ephemeral: true });
         return;
       }
-      const staffRoleIds = removeRole ? [] : role ? Array.from(new Set([...category.staff_role_ids, role.id])) : category.staff_role_ids;
+      if (removeRole && !category.staff_role_ids.includes(removeRole.id)) {
+        await interaction.reply({ content: "Ese rol no está configurado en esta categoría.", ephemeral: true });
+        return;
+      }
+      const staffRoleIds = removeRole
+        ? category.staff_role_ids.filter((roleId) => roleId !== removeRole.id)
+        : role
+          ? Array.from(new Set([...category.staff_role_ids, role.id]))
+          : category.staff_role_ids;
       const updated = await updateTicketCategoryConfig(interaction.guild.id, category.id, {
         discordCategoryId: removeChannel ? null : discordCategory?.id ?? category.discord_category_id,
         staffRoleIds,
