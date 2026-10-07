@@ -34,6 +34,11 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((subcommand) =>
     subcommand
+      .setName("eventos")
+      .setDescription("Selecciona qué eventos se registrarán."),
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
       .setName("desactivar")
       .setDescription("Desactiva los registros del servidor."),
   );
@@ -63,6 +68,28 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       content: `El canal de registros quedó configurado en <#${config.channel_id}>. Se activaron ${config.enabled_events.length} tipos de eventos.`,
       ephemeral: true,
     });
+    return;
+  }
+
+  if (subcommand === "eventos") {
+    const config = await getGuildLogConfig(interaction.guild.id);
+    if (!config?.channel_id) {
+      await interaction.reply({ content: "Primero configura un canal de registros con /logs configurar.", ephemeral: true });
+      return;
+    }
+    const options = LOG_EVENTS.map((event) => ({
+      label: logEventLabel(event),
+      value: event,
+      default: config.enabled_events.includes(event),
+    }));
+    const { StringSelectMenuBuilder, ActionRowBuilder } = await import("discord.js");
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId("logs:events")
+      .setPlaceholder("Selecciona los eventos activos")
+      .setMinValues(0)
+      .setMaxValues(options.length)
+      .addOptions(options);
+    await interaction.reply({ content: "Selecciona los eventos que quieres registrar. Los no seleccionados quedarán desactivados.", components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ephemeral: true });
     return;
   }
 
