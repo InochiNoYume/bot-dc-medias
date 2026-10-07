@@ -2,6 +2,7 @@ import { ChannelType, type Client, type TextChannel } from "discord.js";
 import { listInactiveTickets } from "../modules/tickets/repository.js";
 import { createTicketTranscript } from "../modules/tickets/transcripts.js";
 import { logTicketAction, updateTicket } from "../modules/tickets/actions.js";
+import { ratingMenu } from "../modules/tickets/ui.js";
 
 const INTERVAL_MS = 60_000;
 
@@ -31,7 +32,7 @@ async function processInactiveTickets(client: Client): Promise<void> {
     await textChannel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: false });
     await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "auto_closed", details: { inactiveMinutes: minutes } });
 
-    await textChannel.send("Este ticket se ha cerrado automáticamente por inactividad.");
+    await textChannel.send({ content: "Este ticket se ha cerrado automáticamente por inactividad. El usuario puede valorar la atención recibida.", components: ratingMenu(ticket.id) });
   }
 }
 
