@@ -59,10 +59,12 @@ async function getAuditExecutor(guild: Guild, type: AuditLogEvent, targetId?: st
     const now = Date.now();
     const entry = logs.entries.find((item) => {
       if (now - item.createdTimestamp > 15_000) return false;
-      return !targetId || item.target?.id === targetId;
+      if (!targetId) return true;
+      const target = item.target;
+      return Boolean(target && "id" in target && target.id === targetId);
     });
     const executor = entry?.executor;
-    return executor ? { id: executor.id, tag: executor.tag } : null;
+    return executor ? { id: executor.id, tag: executor.tag ?? undefined } : null;
   } catch {
     return null;
   }
