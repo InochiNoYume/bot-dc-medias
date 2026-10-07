@@ -1,7 +1,7 @@
 import { ChannelType, type Client, type TextChannel } from "discord.js";
 import { listInactiveTickets } from "../modules/tickets/repository.js";
 import { createTicketTranscript } from "../modules/tickets/transcripts.js";
-import { logTicketAction, updateTicket } from "../modules/tickets/actions.js";
+import { logTicketAction, transitionTicket, updateTicket } from "../modules/tickets/actions.js";
 import { ratingMenu } from "../modules/tickets/ui.js";
 import { getGuildSettings } from "../database/repositories/guildRepository.js";
 import { sendGuildActionLog } from "../modules/logging/service.js";
@@ -27,7 +27,7 @@ async function processInactiveTickets(client: Client): Promise<void> {
 
     const channel = guild.channels.cache.get(ticket.channel_id);
     if (!channel || channel.type !== ChannelType.GuildText) {
-      await updateTicket(ticket.id, { status: "closed", closedBy: client.user?.id ?? "system", closeReason: "Cierre automático por inactividad." });
+      await transitionTicket({ ticketId: ticket.id, fromStatuses: ["open", "claimed"], toStatus: "closed", closedBy: client.user?.id ?? "system", closeReason: "Cierre automático por inactividad.", expectedLastActivityAt: ticket.last_activity_at });
       await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "auto_closed", details: { inactiveMinutes: minutes } });
     await sendGuildActionLog(guild, "ticket_action", "Ticket cerrado automáticamente", `El ticket #${ticket.display_number ?? ticket.id} se cerró por inactividad.`, [{ name: "Inactividad", value: `${minutes} minutos`, inline: true }]);
             continue;
