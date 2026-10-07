@@ -186,7 +186,7 @@ export function registerInteractionEvent(client: Client): void {
 
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith("ticket:")) {
         const [, action, maybeMode, maybeTicketId] = interaction.customId.split(":");
-        const ticketId = action === "rating" || action === "priority" ? maybeMode : maybeTicketId;
+        const ticketId = maybeTicketId ?? maybeMode;
         if (!interaction.guild || !ticketId) return;
         const ticket = await getTicketById(interaction.guild.id, ticketId);
         if (!ticket) { await interaction.reply({ content: "No encontré este ticket.", ephemeral: true }); return; }
