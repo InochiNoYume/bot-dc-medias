@@ -26,8 +26,7 @@ async function processInactiveTickets(client: Client): Promise<void> {
       await updateTicket(ticket.id, { status: "closed", closedBy: client.user?.id ?? "system", closeReason: "Cierre automático por inactividad." });
       await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "auto_closed", details: { inactiveMinutes: minutes } });
     await sendGuildActionLog(guild, "ticket_action", "Ticket cerrado automáticamente", `El ticket #${ticket.display_number ?? ticket.id} se cerró por inactividad.`, [{ name: "Inactividad", value: `${minutes} minutos`, inline: true }]);
-      await sendGuildActionLog(guild, "ticket_action", "Ticket cerrado automáticamente", `El ticket #${ticket.display_number ?? ticket.id} se cerró por inactividad.`, [{ name: "Inactividad", value: `${minutes} minutos`, inline: true }]);
-      continue;
+            continue;
     }
 
     const textChannel = channel as TextChannel;
