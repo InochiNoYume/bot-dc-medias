@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ChannelType, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle, type Client, type Guild, type GuildMember, type Interaction, type TextChannel } from "discord.js";
+import { ActionRowBuilder, ChannelType, EmbedBuilder, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle, type Client, type Guild, type GuildMember, type Interaction, type TextChannel } from "discord.js";
 import { commands } from "../commands/index.js";
 import { createTicketCategory, createTicketRecord, countOpenTicketsForUser, getTicketCategory } from "../modules/tickets/repository.js";
 import { addTicketMember, createTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket, touchTicketActivity } from "../modules/tickets/actions.js";
@@ -67,7 +67,7 @@ export function registerInteractionEvent(client: Client): void {
           await interaction.reply({ content: "Este botón solo funciona dentro de un servidor.", ephemeral: true });
           return;
         }
-        const embed = new (await import("discord.js")).EmbedBuilder()
+        const embed = new EmbedBuilder()
           .setTitle("Módulos disponibles")
           .setDescription("La configuración del bot se realiza completamente desde Discord.")
           .addFields(
