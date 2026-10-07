@@ -8,11 +8,15 @@ import {
 } from "../../modules/tickets/repository.js";
 import { buildTicketPanel } from "../../modules/tickets/panel.js";
 import { getTicketByChannel, listTicketLogs } from "../../modules/tickets/actions.js";
+import { getGuildSettings, setTicketArchiveCategory } from "../../database/repositories/guildRepository.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ticket").setDescription("Gestiona el sistema de tickets.")
   .addSubcommand((s) => s.setName("categorias").setDescription("Muestra las categorías disponibles."))
   .addSubcommand((s) => s.setName("historial").setDescription("Muestra el historial del ticket actual."))
+  .addSubcommandGroup((g) => g.setName("archivo").setDescription("Configura el archivado de tickets cerrados.")
+    .addSubcommand((s) => s.setName("configurar").setDescription("Define la categoría para tickets cerrados.").addChannelOption((o) => o.setName("categoria").setDescription("Categoría de Discord para archivar tickets.").addChannelTypes(ChannelType.GuildCategory).setRequired(true)))
+    .addSubcommand((s) => s.setName("desactivar").setDescription("Desactiva el archivado automático."))
   .addSubcommandGroup((g) => g.setName("categoria").setDescription("Administra categorías.")
     .addSubcommand((s) => s.setName("crear").setDescription("Crea una categoría."))
     .addSubcommand((s) => s.setName("eliminar").setDescription("Elimina una categoría.").addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true)))
@@ -31,6 +35,29 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   const group = interaction.options.getSubcommandGroup(false);
+
+  if (group === "archivo") {
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      await interaction.reply({ content: "Necesitas el permiso Administrar servidor.", ephemeral: true });
+      return;
+    }
+    const action = interaction.options.getSubcommand();
+    if (action === "configurar") {
+      const category = interaction.options.getChannel("categoria", true);
+      if (category.type !== ChannelType.GuildCategory) {
+        await interaction.reply({ content: "Debes seleccionar una categoría de Discord.", ephemeral: true });
+        return;
+      }
+      await setTicketArchiveCategory(interaction.guild.id, category.id);
+      await interaction.reply({ content: `Archivado de tickets configurado en ${category}.`, ephemeral: true });
+      return;
+    }
+    if (action === "desactivar") {
+      await setTicketArchiveCategory(interaction.guild.id, null);
+      await interaction.reply({ content: "El archivado automático de tickets ha sido desactivado.", ephemeral: true });
+      return;
+    }
+  }
 
   if (group === "categoria") {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
