@@ -154,7 +154,7 @@ ID: \`${category.id}\``, ephemeral: true });
         if (interaction.channel?.type === ChannelType.GuildText) {
           await createTicketTranscript(ticket.id, interaction.guild.id, interaction.channel);
         }
-        await updateTicket(ticket.id, { status: "closed", closedBy: interaction.user.id, closeReason: reason || null });
+        await transitionTicket({ ticketId: ticket.id, fromStatuses: ["open", "claimed"], toStatus: "closed", closedBy: interaction.user.id, closeReason: reason || null });
         await logTicketActionAndDiscord(interaction.guild, { guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "closed", details: { reason: reason || null } });
         if (interaction.channel?.type === ChannelType.GuildText) {
           await interaction.channel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: false });
@@ -266,7 +266,7 @@ ID: \`${category.id}\``, ephemeral: true });
             await interaction.reply({ content: `Este ticket ya está siendo atendido por <@${ticket.claimed_by}>.`, ephemeral: true }); return;
           }
           const next = ticket.claimed_by === interaction.user.id ? { status: "open" as const, claimedBy: null } : { status: "claimed" as const, claimedBy: interaction.user.id };
-          await updateTicket(ticket.id, next);
+          await transitionTicket({ ticketId: ticket.id, fromStatuses: ["open", "claimed"], toStatus: next.status, claimedBy: next.status === "claimed" ? interaction.user.id : null });
           await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: next.status === "claimed" ? "claimed" : "unclaimed" });
           if (interaction.channel?.type === ChannelType.GuildText) await refreshTicketMessage(interaction.channel, ticket.id);
           await interaction.reply({ content: ticket.claimed_by === interaction.user.id ? "Has liberado el ticket." : "Has tomado el ticket.", ephemeral: true });
@@ -286,7 +286,7 @@ ID: \`${category.id}\``, ephemeral: true });
         if (action === "reopen") {
           if (!staff) { await interaction.reply({ content: "Solo el personal autorizado puede reabrir tickets.", ephemeral: true }); return; }
           if (ticket.status !== "closed") { await interaction.reply({ content: "Este ticket ya está abierto.", ephemeral: true }); return; }
-          await updateTicket(ticket.id, { status: "open" });
+          await transitionTicket({ ticketId: ticket.id, fromStatuses: ["closed"], toStatus: "open" });
           await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "reopened" });
           if (interaction.channel?.type === ChannelType.GuildText) {
             if (category.discord_category_id) {
