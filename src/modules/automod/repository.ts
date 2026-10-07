@@ -109,6 +109,16 @@ export async function saveLockdownChannel(
   if (error) throw error;
 }
 
+export async function deleteLockdownChannel(guildId: string, channelId: string): Promise<void> {
+  const { error } = await supabase
+    .from("automod_lockdown_channels")
+    .delete()
+    .eq("guild_id", guildId)
+    .eq("channel_id", channelId);
+
+  if (error) throw error;
+}
+
 export async function getLockdownChannels(guildId: string): Promise<LockdownChannelState[]> {
   const { data, error } = await supabase
     .from("automod_lockdown_channels")
