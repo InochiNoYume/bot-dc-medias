@@ -45,7 +45,7 @@ export function registerInteractionEvent(client: Client): void {
       }
 
       const interactionChannel = interaction.channel;
-      if (interaction.guild && interactionChannel?.type === ChannelType.GuildText && (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu() || interaction.isModalSubmit())) {
+      if (interaction.guild && interactionChannel && typeof interactionChannel !== "string" && interactionChannel.type === ChannelType.GuildText && (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu() || interaction.isModalSubmit())) {
         const activeTicket = await getTicketByChannel(interaction.guild.id, interactionChannel.id);
         if (activeTicket && activeTicket.status !== "closed") {
           await touchTicketActivity(activeTicket.id);
