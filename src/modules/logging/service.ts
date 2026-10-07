@@ -70,14 +70,14 @@ export function registerLoggingEvents(client: Client): void {
   client.on("guildMemberAdd", async (member: GuildMember) => {
     await sendGuildLog(member.guild, "member_join", new EmbedBuilder()
       .setTitle("Miembro ingresó")
-      .setDescription(`<@${member.id}> (`${member.user.tag}`) ingresó al servidor.`)
+      .setDescription(`<@${member.id}> (\\`${member.user.tag}\\`) ingresó al servidor.`)
       .addFields({ name: "Usuario", value: `<@${member.id}>\n` + `${member.id}`, inline: true }));
   });
 
   client.on("guildMemberRemove", async (member: GuildMember) => {
     await sendGuildLog(member.guild, "member_leave", new EmbedBuilder()
       .setTitle("Miembro salió")
-      .setDescription(`<@${member.id}> (`${member.user.tag}`) salió del servidor.`)
+      .setDescription(`<@${member.id}> (\\`${member.user.tag}\\`) salió del servidor.`)
       .addFields({ name: "Usuario", value: `${member.user.tag}\n${member.id}`, inline: true }));
   });
 
@@ -118,7 +118,7 @@ export function registerLoggingEvents(client: Client): void {
   client.on("channelDelete", async (channel: GuildChannel) => {
     await sendGuildLog(channel.guild, "channel_delete", new EmbedBuilder()
       .setTitle("Canal eliminado")
-      .setDescription(`Se eliminó el canal `#${channel.name}`.`)
+      .setDescription(`Se eliminó el canal \\`#${channel.name}\\`.`)
       .addFields({ name: "ID", value: channel.id, inline: true }));
   });
 
@@ -142,7 +142,7 @@ export function registerLoggingEvents(client: Client): void {
   client.on("roleDelete", async (role: Role) => {
     await sendGuildLog(role.guild, "role_delete", new EmbedBuilder()
       .setTitle("Rol eliminado")
-      .setDescription(`Se eliminó el rol `${role.name}`.`)
+      .setDescription(`Se eliminó el rol \\`${role.name}\\`.`)
       .addFields({ name: "ID", value: role.id, inline: true }));
   });
 
