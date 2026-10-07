@@ -11,8 +11,16 @@ function ensureTargetCanBeModerated(target: GuildMember, moderator: GuildMember,
   if (target.roles.highest.position >= moderator.roles.highest.position && moderator.id !== target.guild.ownerId) throw new Error("Tu rol debe estar por encima del usuario objetivo.");
 }
 
+export function requiredModerationPermission(action: ModerationAction): bigint {
+  if (action === "ban" || action === "unban" || action === "kick") return PermissionFlagsBits.BanMembers;
+  return PermissionFlagsBits.ModerateMembers;
+}
+
 export async function executeModerationAction(input: { action: ModerationAction; targetUser: User; targetMember?: GuildMember | null; moderator: GuildMember; bot: GuildMember; reason: string; durationSeconds?: number | undefined }): Promise<number> {
   const guild = input.moderator.guild;
+  if (!input.moderator.permissions.has(requiredModerationPermission(input.action)) && !input.moderator.permissions.has(PermissionFlagsBits.ManageGuild)) {
+    throw new Error("No tienes el permiso necesario para esta acción.");
+  }
   if (input.targetMember) ensureTargetCanBeModerated(input.targetMember, input.moderator, input.bot);
   const record = await createModerationCase({ guildId: guild.id, targetId: input.targetUser.id, moderatorId: input.moderator.id, action: input.action, reason: input.reason, durationSeconds: input.durationSeconds ?? null });
   try {
