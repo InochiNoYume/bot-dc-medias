@@ -16,6 +16,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) { await interaction.reply({ content: "Este comando solo puede utilizarse dentro de un servidor.", ephemeral: true }); return; }
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) { await interaction.reply({ content: "Necesitas el permiso Gestionar servidor.", ephemeral: true }); return; }
   const subcommand = interaction.options.getSubcommand();
   if (subcommand === "agregar") {
     const channel = interaction.options.getChannel("canal", true);
