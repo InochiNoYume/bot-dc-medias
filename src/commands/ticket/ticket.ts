@@ -4,7 +4,7 @@ import {
 } from "discord.js";
 import {
   createTicketPanel, deleteTicketCategory, listTicketCategories, createTicketCategory,
-  updateTicketCategoryConfig, getTicketCategory, countTicketsForCategory,
+  updateTicketCategoryConfig, getTicketCategory, countTicketsForCategory, getTicketPanelByChannel,
 } from "../../modules/tickets/repository.js";
 import { buildTicketPanel } from "../../modules/tickets/panel.js";
 import { getTicketByChannel, listTicketLogs } from "../../modules/tickets/actions.js";
