@@ -13,13 +13,21 @@ export async function getTicketById(guildId: string, ticketId: string): Promise<
   return data as TicketRecord | null;
 }
 
-export async function updateTicket(ticketId: string, changes: { status?: TicketStatus; priority?: TicketPriority; claimedBy?: string | null; closedBy?: string | null; closeReason?: string | null }): Promise<TicketRecord> {
+export async function updateTicket(ticketId: string, changes: {
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  claimedBy?: string | null;
+  closedBy?: string | null;
+  closeReason?: string | null;
+  archivedAt?: string | null;
+}): Promise<TicketRecord> {
   const p: Record<string, unknown> = {};
   if (changes.status !== undefined) p.status = changes.status;
   if (changes.priority !== undefined) p.priority = changes.priority;
   if (changes.claimedBy !== undefined) p.claimed_by = changes.claimedBy;
   if (changes.closedBy !== undefined) p.closed_by = changes.closedBy;
   if (changes.closeReason !== undefined) p.close_reason = changes.closeReason;
+  if (changes.archivedAt !== undefined) p.archived_at = changes.archivedAt;
   if (changes.status === "claimed") p.claimed_at = new Date().toISOString();
   if (changes.status === "closed") p.closed_at = new Date().toISOString();
   if (changes.status === "open") {
@@ -27,6 +35,7 @@ export async function updateTicket(ticketId: string, changes: { status?: TicketS
     p.closed_by = null;
     p.close_reason = null;
     p.claimed_by = null;
+    p.archived_at = null;
   }
   const { data, error } = await supabase.from("tickets").update(p).eq("id", ticketId).select("*").single();
   if (error) throw error;
@@ -59,14 +68,12 @@ export async function logTicketAction(input: { guildId: string; ticketId: string
   if (error) throw error;
 }
 
-
 export async function touchTicketActivity(ticketId: string): Promise<void> {
   const { error } = await supabase.from("tickets").update({
     last_activity_at: new Date().toISOString(),
   }).eq("id", ticketId).in("status", ["open", "claimed"]);
   if (error) throw error;
 }
-
 
 export interface TicketLogRecord {
   id: string;
