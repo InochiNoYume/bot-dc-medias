@@ -1,7 +1,9 @@
 import {
+  ActionRowBuilder,
   ChannelType,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  StringSelectMenuBuilder,
   type ChatInputCommandInteraction,
   type TextChannel,
 } from "discord.js";
@@ -82,7 +84,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       value: event,
       default: config.enabled_events.includes(event),
     }));
-    const { ActionRowBuilder } = await import("discord.js");
     const menu = new StringSelectMenuBuilder()
       .setCustomId("logs:events")
       .setPlaceholder("Selecciona los eventos activos")
