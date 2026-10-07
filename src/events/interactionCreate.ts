@@ -6,6 +6,7 @@ import { PRIORITY_LABELS, memberMenus, priorityMenu, ratingMenu, ticketControls,
 import { TICKET_OPEN_PREFIX } from "../modules/tickets/panel.js";
 import { createTicketTranscript } from "../modules/tickets/transcripts.js";
 import { logTicketAction } from "../modules/tickets/actions.js";
+import { getGuildSettings } from "../database/repositories/guildRepository.js";
 
 const commandMap = new Map(commands.map((command) => [command.data.name, command]));
 
@@ -109,6 +110,14 @@ export function registerInteractionEvent(client: Client): void {
           await interaction.channel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: false });
           await refreshTicketMessage(interaction.channel, ticket.id);
           await interaction.channel.send({ content: reason ? `El ticket ha sido cerrado. Motivo: **${reason}**` : "El ticket ha sido cerrado. El usuario puede valorar la atención recibida.", components: ratingMenu(ticket.id) });
+          const settings = await getGuildSettings(interaction.guild.id);
+          const archiveCategoryId = settings?.ticket_archive_category_id;
+          const archiveCategory = archiveCategoryId ? interaction.guild.channels.cache.get(archiveCategoryId) : undefined;
+          if (archiveCategory?.type === ChannelType.GuildCategory) {
+            await interaction.channel.setParent(archiveCategory.id, { lockPermissions: false });
+            await updateTicket(ticket.id, { archivedAt: new Date().toISOString() });
+            await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "archived", details: { categoryId: archiveCategory.id } });
+          }
         }
         await interaction.reply({ content: "Ticket cerrado correctamente.", ephemeral: true });
         return;
@@ -210,6 +219,12 @@ export function registerInteractionEvent(client: Client): void {
           await updateTicket(ticket.id, { status: "open" });
           await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "reopened" });
           if (interaction.channel?.type === ChannelType.GuildText) {
+            if (category.discord_category_id) {
+              const originalCategory = interaction.guild.channels.cache.get(category.discord_category_id);
+              if (originalCategory?.type === ChannelType.GuildCategory) {
+                await interaction.channel.setParent(originalCategory.id, { lockPermissions: false });
+              }
+            }
             await interaction.channel.permissionOverwrites.edit(ticket.owner_id, { SendMessages: true, ViewChannel: true, ReadMessageHistory: true });
             await refreshTicketMessage(interaction.channel, ticket.id);
           }
