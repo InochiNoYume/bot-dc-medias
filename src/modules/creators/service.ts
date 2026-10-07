@@ -186,7 +186,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
     .setTimestamp(item.publishedAt ? new Date(item.publishedAt) : new Date());
 
   await (channel as TextChannel).send({
-    content: mention || undefined,
+    ...(mention ? { content: mention } : {}),
     embeds: [embed],
   });
 
