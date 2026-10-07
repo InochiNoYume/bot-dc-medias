@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ChannelType, EmbedBuilder, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle, type Client, type Guild, type GuildMember, type Interaction, type TextChannel } from "discord.js";
 import { commands } from "../commands/index.js";
 import { createTicketCategory, createTicketRecord, countOpenTicketsForUser, getTicketCategory } from "../modules/tickets/repository.js";
-import { addTicketMember, createTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket, touchTicketActivity } from "../modules/tickets/actions.js";
+import { addTicketMember, createTicketRating, getTicketRating, getTicketByChannel, getTicketById, removeTicketMember, updateTicket, touchTicketActivity } from "../modules/tickets/actions.js";
 import { PRIORITY_LABELS, memberMenus, priorityMenu, ratingMenu, ticketControls, ticketEmbed } from "../modules/tickets/ui.js";
 import { TICKET_OPEN_PREFIX } from "../modules/tickets/panel.js";
 import { createTicketTranscript } from "../modules/tickets/transcripts.js";
