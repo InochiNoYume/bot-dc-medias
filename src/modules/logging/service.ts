@@ -1,6 +1,7 @@
 import {
   AuditLogEvent,
   EmbedBuilder,
+  PermissionsBitField,
   type Client,
   type Guild,
   type GuildChannel,
@@ -79,6 +80,31 @@ function addActor(embed: EmbedBuilder, actor: { id: string; tag?: string } | nul
 function diffField(label: string, before: string | number | boolean | null | undefined, after: string | number | boolean | null | undefined) {
   if (before === after) return null;
   return { name: label, value: "Antes: " + String(before ?? "N/A") + "\nAhora: " + String(after ?? "N/A"), inline: false };
+}
+
+function permissionNames(bits: bigint): string {
+  const permissions = new PermissionsBitField(bits);
+  const names = permissions.toArray();
+  return names.length ? names.join(", ") : "Ninguno";
+}
+
+function permissionDiff(before: bigint, after: bigint): { name: string; value: string; inline: boolean } | null {
+  if (before === after) return null;
+  const added = new PermissionsBitField(after).remove(before).toArray();
+  const removed = new PermissionsBitField(before).remove(after).toArray();
+  const lines = [
+    added.length ? "Añadidos: " + added.join(", ") : null,
+    removed.length ? "Retirados: " + removed.join(", ") : null,
+  ].filter((line): line is string => line !== null);
+  return {
+    name: "Permisos",
+    value: lines.length ? truncate(lines.join("\n")) : "Los permisos cambiaron.",
+    inline: false,
+  };
+}
+
+function overwriteSummary(channel: GuildChannel): string {
+  return "permissionOverwrites" in channel ? String(channel.permissionOverwrites.cache.size) : "N/A";
 }
 
 export async function sendGuildLog(guild: Guild, event: LogEvent, embed: EmbedBuilder): Promise<void> {
@@ -180,7 +206,9 @@ export function registerLoggingEvents(client: Client): void {
       "topic" in oldChannel && "topic" in newChannel ? diffField("Tema", oldChannel.topic, newChannel.topic) : null,
       "rateLimitPerUser" in oldChannel && "rateLimitPerUser" in newChannel ? diffField("Slowmode", oldChannel.rateLimitPerUser, newChannel.rateLimitPerUser) : null,
       "nsfw" in oldChannel && "nsfw" in newChannel ? diffField("NSFW", oldChannel.nsfw, newChannel.nsfw) : null,
-      "permissionOverwrites" in oldChannel && "permissionOverwrites" in newChannel && oldChannel.permissionOverwrites.cache.size !== newChannel.permissionOverwrites.cache.size ? { name: "Permisos", value: "Cambió la cantidad de sobrescrituras de permisos.", inline: false } : null,
+      "permissionOverwrites" in oldChannel && "permissionOverwrites" in newChannel && oldChannel.permissionOverwrites.cache.size !== newChannel.permissionOverwrites.cache.size
+        ? { name: "Permisos", value: "Antes: " + overwriteSummary(oldChannel) + " sobrescrituras\\nAhora: " + overwriteSummary(newChannel) + " sobrescrituras", inline: false }
+        : null,
     ].filter((field): field is { name: string; value: string; inline: boolean } => field !== null);
     if (!fields.length) return;
     const actor = await getAuditExecutor(newChannel.guild, AuditLogEvent.ChannelUpdate, newChannel.id);
@@ -205,7 +233,7 @@ export function registerLoggingEvents(client: Client): void {
       diffField("Nombre", oldRole.name, newRole.name), diffField("Posición", oldRole.position, newRole.position),
       diffField("Color", oldRole.color, newRole.color), diffField("Visible por separado", oldRole.hoist, newRole.hoist),
       diffField("Mencionable", oldRole.mentionable, newRole.mentionable),
-      oldRole.permissions.bitfield !== newRole.permissions.bitfield ? { name: "Permisos", value: "Los permisos del rol cambiaron.", inline: false } : null,
+      permissionDiff(oldRole.permissions.bitfield, newRole.permissions.bitfield),
     ].filter((field): field is { name: string; value: string; inline: boolean } => field !== null);
     if (!fields.length) return;
     const actor = await getAuditExecutor(newRole.guild, AuditLogEvent.RoleUpdate, newRole.id);
