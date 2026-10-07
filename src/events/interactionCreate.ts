@@ -163,6 +163,7 @@ export function registerInteractionEvent(client: Client): void {
           const archiveCategoryId = settings?.ticket_archive_category_id;
           const archiveCategory = archiveCategoryId ? interaction.guild.channels.cache.get(archiveCategoryId) : undefined;
           if (archiveCategory?.type === ChannelType.GuildCategory) {
+            await interaction.channel.permissionOverwrites.edit(ticket.owner_id, { ViewChannel: false, SendMessages: false });
             await interaction.channel.setParent(archiveCategory.id, { lockPermissions: false });
             await updateTicket(ticket.id, { archivedAt: new Date().toISOString() });
             await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "archived", details: { categoryId: archiveCategory.id } });
