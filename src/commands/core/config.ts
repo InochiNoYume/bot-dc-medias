@@ -39,8 +39,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       { name: "Configuración inicial", value: settings?.setup_completed ? "Configurada" : "Pendiente", inline: true },
       { name: "Tickets", value: ticketCategories.length ? `${ticketCategories.length} categoría(s)` : "Sin categorías", inline: true },
       { name: "Registros", value: logConfig?.channel_id ? `Activos · <#${logConfig.channel_id}>` : "No configurados", inline: true },
-      { name: "AutoMod", value: automod.enabled ? "Activo" : "Inactivo", inline: true },
-      { name: "Anti-Raid", value: automod.enabled && automod.raid_enabled ? "Activo" : "Inactivo", inline: true },
+      { name: "AutoMod", value: automod?.enabled ? "Activo" : "Inactivo", inline: true },
+      { name: "Anti-Raid", value: automod?.enabled && automod.raid_enabled ? "Activo" : "Inactivo", inline: true },
       { name: "Creadores", value: creatorFeeds.length ? `${creatorFeeds.filter((feed) => feed.enabled).length}/${creatorFeeds.length} activos` : "Sin configuraciones", inline: true },
       { name: "Archivo de tickets", value: settings?.ticket_archive_category_id ? `<#${settings.ticket_archive_category_id}>` : "Desactivado", inline: true },
     )
