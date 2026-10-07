@@ -62,6 +62,7 @@ export function registerInteractionEvent(client: Client): void {
         const description = interaction.fields.getTextInputValue("description").trim();
         const priority = interaction.fields.getTextInputValue("priority").trim().toLowerCase();
         const maxOpen = Number(interaction.fields.getTextInputValue("maxOpen").trim());
+        const autoCloseRaw = Number(interaction.fields.getTextInputValue("autoClose").trim());
         if (!["low", "normal", "high", "urgent"].includes(priority)) {
           await interaction.reply({ content: "La prioridad indicada no es válida.", ephemeral: true });
           return;
@@ -70,9 +71,13 @@ export function registerInteractionEvent(client: Client): void {
           await interaction.reply({ content: "El máximo debe estar entre 1 y 20.", ephemeral: true });
           return;
         }
+        if (!Number.isInteger(autoCloseRaw) || autoCloseRaw < 0 || autoCloseRaw > 10080 || (autoCloseRaw > 0 && autoCloseRaw < 5)) {
+          await interaction.reply({ content: "El cierre automático debe ser 0 (desactivado) o un valor entre 5 y 10080 minutos.", ephemeral: true });
+          return;
+        }
         const category = await createTicketCategory({
           guildId: interaction.guild.id, name, description, discordCategoryId: null, staffRoleIds: [],
-          priority, maxOpenPerUser: maxOpen, autoCloseMinutes: null,
+          priority, maxOpenPerUser: maxOpen, autoCloseMinutes: autoCloseRaw === 0 ? null : autoCloseRaw,
         });
         await interaction.reply({ content: `Categoría creada: **${category.name}**\nID: \`${category.id}\``, ephemeral: true });
         return;
