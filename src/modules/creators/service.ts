@@ -19,6 +19,20 @@ async function fetchYouTube(feed: CreatorFeed): Promise<CreatorItem | null> {
 
 function decodeXml(value:string):string{return value.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'");}
 
+async function fetchTwitch(feed: CreatorFeed): Promise<CreatorItem | null> {
+  const response = await fetch("https://www.twitch.tv/" + encodeURIComponent(feed.external_id), {
+    headers: { "User-Agent": "bot-dc-medias/1.0" },
+  });
+  if (!response.ok) throw new Error("Twitch respondió " + response.status);
+  const html = await response.text();
+  const match = html.match(/<meta property="og:title" content="([^"]+)"/i);
+  const title = match?.[1] ? decodeXml(match[1]) : null;
+  if (!title || /twitch/i.test(title) && /video/i.test(title) === false) return null;
+  const liveMatch = html.match(/"isLiveBroadcast":(true|false)/i);
+  if (liveMatch?.[1] !== "true") return null;
+  return { id: "live:" + feed.external_id, title: title.replace(/\s+-\s+Twitch$/i, ""), url: "https://www.twitch.tv/" + encodeURIComponent(feed.external_id), publishedAt: new Date().toISOString() };
+}
+
 async function fetchLatest(feed: CreatorFeed): Promise<CreatorItem | null> {
   if (feed.platform === "youtube") return fetchYouTube(feed);
   return null;
