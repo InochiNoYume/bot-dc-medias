@@ -158,6 +158,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       await interaction.reply({ content: "Necesitas el permiso Administrar servidor.", ephemeral: true });
       return;
     }
+    const action = interaction.options.getSubcommand();
     const categories = await listTicketCategories(interaction.guild.id);
     if (action === "reparar") {
       const channel = interaction.options.getChannel("canal", true);
