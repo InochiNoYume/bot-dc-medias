@@ -24,6 +24,11 @@ create table if not exists public.guild_ticket_counters (
 );
 alter table public.tickets add column if not exists display_number bigint;
 update public.tickets set display_number = ticket_number where display_number is null;
+insert into public.guild_ticket_counters (guild_id, next_number)
+select g.guild_id, coalesce(max(t.display_number), 0) + 1
+from public.guilds g left join public.tickets t on t.guild_id = g.guild_id
+group by g.guild_id
+on conflict (guild_id) do nothing;
 create index if not exists idx_ticket_panels_guild on public.ticket_panels(guild_id);
 create index if not exists idx_ticket_members_user on public.ticket_members(user_id);
 create index if not exists idx_ticket_ratings_guild on public.ticket_ratings(guild_id);
