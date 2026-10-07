@@ -61,3 +61,17 @@ export async function createTicketPanel(input: { guildId: string; channelId: str
   });
   if (error) throw error;
 }
+
+
+export async function listInactiveTickets(): Promise<Array<TicketRecord & { category: TicketCategory }>> {
+  const { data, error } = await supabase
+    .from("tickets")
+    .select("*, ticket_categories!inner(*)")
+    .in("status", ["open", "claimed"])
+    .not("ticket_categories.auto_close_minutes", "is", null);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    ...(row as unknown as TicketRecord),
+    category: (row as { ticket_categories: TicketCategory }).ticket_categories,
+  }));
+}
