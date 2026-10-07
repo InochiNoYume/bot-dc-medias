@@ -14,6 +14,9 @@ export const LOG_EVENTS = [
   "role_update",
   "ban_add",
   "ban_remove",
+  "moderation_action",
+  "ticket_action",
+  "ticket_rating",
 ] as const;
 
 export type LogEvent = (typeof LOG_EVENTS)[number];
@@ -31,6 +34,9 @@ const EVENT_LABELS: Record<LogEvent, string> = {
   role_update: "Roles modificados",
   ban_add: "Baneos",
   ban_remove: "Desbaneos",
+  moderation_action: "Acciones de moderación",
+  ticket_action: "Acciones de tickets",
+  ticket_rating: "Valoraciones de tickets",
 };
 
 function truncate(value: string, max = 900): string {
@@ -64,6 +70,20 @@ export async function sendGuildLog(
 
 export function logEventLabel(event: LogEvent): string {
   return EVENT_LABELS[event];
+}
+
+export async function sendGuildActionLog(
+  guild: Guild,
+  event: Extract<LogEvent, "moderation_action" | "ticket_action" | "ticket_rating">,
+  title: string,
+  description: string,
+  fields: { name: string; value: string; inline?: boolean }[] = [],
+): Promise<void> {
+  await sendGuildLog(
+    guild,
+    event,
+    new EmbedBuilder().setTitle(title).setDescription(description).addFields(fields),
+  );
 }
 
 export function registerLoggingEvents(client: Client): void {
