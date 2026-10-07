@@ -24,7 +24,9 @@ export const data = new SlashCommandBuilder()
       .addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true))
       .addChannelOption((o) => o.setName("canal").setDescription("Categoría de Discord donde se crearán los tickets.").addChannelTypes(ChannelType.GuildCategory))
       .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets."))
-      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad antes del cierre automático (5-10080).").setMinValue(5).setMaxValue(10080))))
+      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; usa 0 para desactivar (0-10080).").setMinValue(0).setMaxValue(10080))
+      .addBooleanOption((o) => o.setName("quitar_rol").setDescription("Quita el rol de atención configurado."))
+      .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Quita la categoría de Discord configurada.")))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
     .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
 
@@ -91,20 +93,31 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       }
       const discordCategory = interaction.options.getChannel("canal");
       const role = interaction.options.getRole("rol");
-      const autoCloseMinutes = interaction.options.getInteger("cierre");
-      if (!discordCategory && !role && autoCloseMinutes === null) {
+      const autoCloseInput = interaction.options.getInteger("cierre");
+      const autoCloseMinutes = autoCloseInput === 0 ? null : autoCloseInput;
+      const removeRole = interaction.options.getBoolean("quitar_rol") ?? false;
+      const removeChannel = interaction.options.getBoolean("quitar_canal") ?? false;
+      if (!discordCategory && !role && autoCloseInput === null && !removeRole && !removeChannel) {
         await interaction.reply({ content: "Debes indicar al menos un cambio de configuración.", ephemeral: true });
+        return;
+      }
+      if (removeRole && role) {
+        await interaction.reply({ content: "No puedes indicar un rol y quitar el rol al mismo tiempo.", ephemeral: true });
+        return;
+      }
+      if (removeChannel && discordCategory) {
+        await interaction.reply({ content: "No puedes indicar una categoría y quitarla al mismo tiempo.", ephemeral: true });
         return;
       }
       if (discordCategory && discordCategory.type !== ChannelType.GuildCategory) {
         await interaction.reply({ content: "El canal indicado debe ser una categoría de Discord.", ephemeral: true });
         return;
       }
-      const staffRoleIds = role ? Array.from(new Set([...category.staff_role_ids, role.id])) : category.staff_role_ids;
+      const staffRoleIds = removeRole ? [] : role ? Array.from(new Set([...category.staff_role_ids, role.id])) : category.staff_role_ids;
       const updated = await updateTicketCategoryConfig(interaction.guild.id, category.id, {
-        discordCategoryId: discordCategory?.id ?? category.discord_category_id,
+        discordCategoryId: removeChannel ? null : discordCategory?.id ?? category.discord_category_id,
         staffRoleIds,
-        autoCloseMinutes: autoCloseMinutes ?? category.auto_close_minutes,
+        autoCloseMinutes: autoCloseInput === null ? category.auto_close_minutes : autoCloseMinutes,
       });
       await interaction.reply({
         content: `Configuración actualizada para **${updated.name}**.\nCategoría de Discord: ${updated.discord_category_id ? `<#${updated.discord_category_id}>` : "Sin configurar"}\nRoles de atención: ${updated.staff_role_ids.length ? updated.staff_role_ids.map((roleId) => `<@&${roleId}>`).join(", ") : "Ninguno"}\nCierre automático: ${updated.auto_close_minutes ? `${updated.auto_close_minutes} min` : "Desactivado"}`,
