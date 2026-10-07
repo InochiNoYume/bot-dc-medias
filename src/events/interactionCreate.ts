@@ -304,12 +304,14 @@ ID: \`${category.id}\``, ephemeral: true });
 
         if (action === "priority") {
           if (!staff) { await interaction.reply({ content: "Solo el personal autorizado puede cambiar la prioridad.", ephemeral: true }); return; }
+          if (ticket.status === "closed") { await interaction.reply({ content: "No puedes cambiar la prioridad de un ticket cerrado.", ephemeral: true }); return; }
           await interaction.reply({ content: "Selecciona la nueva prioridad.", components: priorityMenu(ticket.id), ephemeral: true });
           return;
         }
 
         if (action === "members") {
           if (!staff) { await interaction.reply({ content: "Solo el personal autorizado puede gestionar usuarios.", ephemeral: true }); return; }
+          if (ticket.status === "closed") { await interaction.reply({ content: "No puedes gestionar usuarios en un ticket cerrado.", ephemeral: true }); return; }
           await interaction.reply({ content: "Gestiona los usuarios con acceso a este ticket.", components: memberMenus(ticket.id), ephemeral: true });
           return;
         }
@@ -342,6 +344,7 @@ ID: \`${category.id}\``, ephemeral: true });
         const member = await interaction.guild.members.fetch(interaction.user.id);
         if (action === "priority") {
           if (!isStaff(member, category.staff_role_ids)) { await interaction.reply({ content: "No tienes permiso para cambiar la prioridad.", ephemeral: true }); return; }
+          if (ticket.status === "closed") { await interaction.update({ content: "Este ticket ya está cerrado.", components: [] }); return; }
           const priority = interaction.values[0] as "low" | "normal" | "high" | "urgent";
           await updateTicket(ticket.id, { priority });
           await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "priority_changed", details: { priority } });
@@ -353,6 +356,7 @@ ID: \`${category.id}\``, ephemeral: true });
           if (interaction.user.id !== ticket.owner_id) { await interaction.reply({ content: "Solo el creador del ticket puede valorar la atención.", ephemeral: true }); return; }
           if (ticket.status !== "closed") { await interaction.reply({ content: "El ticket todavía está abierto.", ephemeral: true }); return; }
           const rating = Number(interaction.values[0]);
+          if (await getTicketRating(ticket.id)) { await interaction.update({ content: "Este ticket ya tiene una valoración registrada.", components: [] }); return; }
           await createTicketRating({ ticketId: ticket.id, guildId: interaction.guild.id, userId: interaction.user.id, rating });
           await sendGuildActionLog(interaction.guild, "ticket_rating", "Valoración de ticket", `El ticket #${ticket.display_number ?? ticket.id} recibió una valoración de **${rating}/5**.`, [{ name: "Usuario", value: `<@${interaction.user.id}>`, inline: true }]);
           await interaction.update({ content: "Gracias por tu valoración.", components: [] });
@@ -372,10 +376,18 @@ ID: \`${category.id}\``, ephemeral: true });
         const targetId = interaction.values[0];
         if (!targetId) { await interaction.reply({ content: "Debes seleccionar un usuario.", ephemeral: true }); return; }
         if (interaction.channel?.type !== ChannelType.GuildText) { await interaction.reply({ content: "El ticket no está en un canal de texto.", ephemeral: true }); return; }
+        if (ticket.status === "closed") { await interaction.reply({ content: "No puedes modificar usuarios en un ticket cerrado.", ephemeral: true }); return; }
         if (mode === "add") {
-          await addTicketMember(ticket.id, targetId);
-          await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "member_added", details: { userId: targetId } });
+          const target = await interaction.guild.members.fetch(targetId).catch(() => null);
+          if (!target || target.user.bot) { await interaction.reply({ content: "El usuario seleccionado no es válido.", ephemeral: true }); return; }
           await interaction.channel.permissionOverwrites.edit(targetId, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true });
+          try {
+            await addTicketMember(ticket.id, targetId);
+          } catch (error) {
+            await interaction.channel.permissionOverwrites.delete(targetId).catch(() => undefined);
+            throw error;
+          }
+          await logTicketAction({ guildId: interaction.guild.id, ticketId: ticket.id, actorId: interaction.user.id, action: "member_added", details: { userId: targetId } });
           await interaction.reply({ content: "Usuario añadido al ticket.", ephemeral: true });
         } else {
           if (targetId === ticket.owner_id) { await interaction.reply({ content: "No puedes retirar al creador del ticket.", ephemeral: true }); return; }
