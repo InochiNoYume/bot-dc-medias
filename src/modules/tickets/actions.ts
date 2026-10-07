@@ -49,6 +49,8 @@ export async function transitionTicket(input: {
   fromStatuses: TicketStatus[];
   toStatus: TicketStatus;
   claimedBy?: string | null;
+  expectedClaimedBy?: string | null;
+  expectedLastActivityAt?: string;
   closedBy?: string | null;
   closeReason?: string | null;
 }): Promise<TicketRecord> {
