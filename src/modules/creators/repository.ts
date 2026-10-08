@@ -76,7 +76,10 @@ export async function updateCreatorFeed(
   if (error) throw error;
 }
 
-export type CreatorNotificationClaimResult = "claimed" | "already_sent" | "in_progress";
+export type CreatorNotificationClaimResult =
+  | { status: "claimed"; claimedAt: string }
+  | { status: "already_sent" }
+  | { status: "in_progress" };
 
 const CREATOR_CLAIM_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -102,7 +105,7 @@ export async function claimCreatorNotification(input: {
     .select("id")
     .maybeSingle();
 
-  if (!error) return data ? "claimed" : "in_progress";
+  if (!error) return data ? { status: "claimed", claimedAt } : { status: "in_progress" };
   if (error.code !== "23505") throw error;
 
   const existing = await supabase
@@ -112,8 +115,8 @@ export async function claimCreatorNotification(input: {
     .eq("external_item_id", input.externalItemId)
     .maybeSingle();
   if (existing.error) throw existing.error;
-  if (!existing.data) return "in_progress";
-  if (existing.data.sent_at) return "already_sent";
+  if (!existing.data) return { status: "in_progress" };
+  if (existing.data.sent_at) return { status: "already_sent" };
 
   const existingClaimedAt = existing.data.claimed_at ? Date.parse(existing.data.claimed_at) : 0;
   if (existingClaimedAt && Date.now() - existingClaimedAt < CREATOR_CLAIM_TIMEOUT_MS) {
@@ -125,6 +128,7 @@ export async function claimCreatorNotification(input: {
     .delete()
     .eq("feed_id", input.feedId)
     .eq("external_item_id", input.externalItemId)
+    .eq("claimed_at", existing.data.claimed_at)
     .is("sent_at", null);
   if (releaseError) throw releaseError;
 
@@ -141,17 +145,22 @@ export async function claimCreatorNotification(input: {
     })
     .select("id")
     .maybeSingle();
-  if (retry.error?.code === "23505") return "in_progress";
+  if (retry.error?.code === "23505") return { status: "in_progress" };
   if (retry.error) throw retry.error;
-  return retry.data ? "claimed" : "in_progress";
+  return retry.data ? { status: "claimed", claimedAt } : { status: "in_progress" };
 }
 
-export async function releaseCreatorNotificationClaim(feedId: string, externalItemId: string): Promise<void> {
+export async function releaseCreatorNotificationClaim(
+  feedId: string,
+  externalItemId: string,
+  claimedAt: string,
+): Promise<void> {
   const { error } = await supabase
     .from("creator_notifications")
     .delete()
     .eq("feed_id", feedId)
     .eq("external_item_id", externalItemId)
+    .eq("claimed_at", claimedAt)
     .is("sent_at", null);
   if (error) throw error;
 }
@@ -162,6 +171,7 @@ export async function markCreatorNotificationSent(input: {
   title: string;
   url: string;
   publishedAt: string | null;
+  claimedAt: string;
 }): Promise<void> {
   const { error } = await supabase
     .from("creator_notifications")
@@ -173,6 +183,7 @@ export async function markCreatorNotificationSent(input: {
     })
     .eq("feed_id", input.feedId)
     .eq("external_item_id", input.externalItemId)
+    .eq("claimed_at", input.claimedAt)
     .is("sent_at", null);
   if (error) throw error;
 }
