@@ -60,6 +60,7 @@ let twitchTokenExpiresAt = 0;
 let kickAccessToken: string | null = null;
 let kickTokenExpiresAt = 0;
 let polling = false;
+const EXTERNAL_REQUEST_TIMEOUT_MS = 10_000;
 
 async function getTwitchAccessToken(): Promise<string | null> {
   if (!env.twitchClientId || !env.twitchClientSecret) return null;
@@ -77,6 +78,7 @@ async function getTwitchAccessToken(): Promise<string | null> {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS),
   });
 
   if (!response.ok) throw new Error("Twitch OAuth respondió " + response.status);
@@ -116,6 +118,7 @@ async function getKickAccessToken(): Promise<string | null> {
 async function fetchYouTube(feed: CreatorFeed): Promise<CreatorItem | null> {
   const response = await fetch(
     "https://www.youtube.com/feeds/videos.xml?channel_id=" + encodeURIComponent(feed.external_id),
+    { signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS) },
   );
   if (!response.ok) throw new Error("YouTube respondió " + response.status);
 
@@ -150,6 +153,7 @@ async function fetchTwitch(feed: CreatorFeed): Promise<CreatorItem | null> {
         Authorization: "Bearer " + token,
         "Client-Id": env.twitchClientId,
       },
+      signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS),
     },
   );
 
@@ -181,7 +185,10 @@ async function fetchKick(feed: CreatorFeed): Promise<CreatorItem | null> {
 
   const response = await fetch(
     "https://api.kick.com/public/v1/channels?slug=" + encodeURIComponent(slug),
-    { headers: { Authorization: "Bearer " + token } },
+    {
+      headers: { Authorization: "Bearer " + token },
+      signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS),
+    },
   );
 
   if (response.status === 401) {
