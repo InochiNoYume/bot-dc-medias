@@ -4,7 +4,7 @@ Multi-guild Discord bot for creator communities and development environments.
 
 ## Stack
 
-- Node.js 20+
+- Node.js 22+
 - TypeScript
 - Discord.js v14
 - Supabase PostgreSQL
@@ -26,4 +26,15 @@ Multi-guild Discord bot for creator communities and development environments.
 4. Run `npm run check`.
 5. Run `npm run dev`.
 
-The initial phase only boots the core and database connection. Feature modules are added incrementally and tested in the DEV guild first.
+## Current modules
+
+- Core
+- Tickets
+- Moderation
+- Logs
+- AutoMod / Anti-raid
+- Creators
+- Community
+- Statistics
+
+All modules are designed for multi-guild operation with isolated configuration by `guild_id`.
