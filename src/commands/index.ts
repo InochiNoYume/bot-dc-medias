@@ -6,6 +6,7 @@ import * as moderation from "./moderation/mod.js";
 import * as logs from "./logs/logs.js";
 import * as automod from "./automod/automod.js";
 import * as creators from "./creators/creators.js";
+import * as community from "./community/community.js";
 import type { Command } from "../core/command.js";
 
-export const commands: Command[] = [ping, setup, config, ticket, moderation, logs, automod, creators];
+export const commands: Command[] = [ping, setup, config, ticket, moderation, logs, automod, creators, community];
