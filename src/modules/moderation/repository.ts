@@ -12,8 +12,8 @@ export async function createModerationCase(input: { guildId: string; targetId: s
   return data as ModerationCase;
 }
 
-export async function updateModerationCase(id: string, status: ModerationCaseStatus, metadata: Record<string, unknown> = {}): Promise<void> {
-  const { error } = await supabase.from("moderation_cases").update({ status, metadata }).eq("id", id);
+export async function updateModerationCase(guildId: string, id: string, status: ModerationCaseStatus, metadata: Record<string, unknown> = {}): Promise<void> {
+  const { error } = await supabase.from("moderation_cases").update({ status, metadata }).eq("guild_id", guildId).eq("id", id);
   if (error) throw error;
 }
 
