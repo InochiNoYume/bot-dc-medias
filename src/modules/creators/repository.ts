@@ -172,8 +172,8 @@ export async function markCreatorNotificationSent(input: {
   url: string;
   publishedAt: string | null;
   claimedAt: string;
-}): Promise<void> {
-  const { error } = await supabase
+}): Promise<boolean> {
+  const { data, error } = await supabase
     .from("creator_notifications")
     .update({
       title: input.title,
@@ -184,6 +184,9 @@ export async function markCreatorNotificationSent(input: {
     .eq("feed_id", input.feedId)
     .eq("external_item_id", input.externalItemId)
     .eq("claimed_at", input.claimedAt)
-    .is("sent_at", null);
+    .is("sent_at", null)
+    .select("id")
+    .maybeSingle();
   if (error) throw error;
+  return Boolean(data);
 }
