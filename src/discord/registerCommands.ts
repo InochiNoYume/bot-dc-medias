@@ -15,16 +15,15 @@ export async function registerCommands(): Promise<void> {
 
   await rest.put(
     Routes.applicationCommands(env.discordClientId),
-    { body: payload },
-  );
-
-  // Remove legacy guild-scoped registrations created by older versions.
-  // The bot now uses global commands only, so the DEV guild must not keep
-  // a second copy of the same command definitions.
-  await rest.put(
-    Routes.applicationGuildCommands(env.discordClientId, env.devGuildId),
     { body: [] },
   );
 
-  console.log(`[COMMANDS] ${payload.length} comando(s) registrados globalmente; comandos DEV antiguos limpiados.`);
+  for (const guildId of env.allowedGuildIds) {
+    await rest.put(
+      Routes.applicationGuildCommands(env.discordClientId, guildId),
+      { body: payload },
+    );
+  }
+
+  console.log(`[COMMANDS] ${payload.length} comando(s) registrados únicamente en ${env.allowedGuildIds.length} servidor(es) autorizado(s).`);
 }
