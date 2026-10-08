@@ -1,6 +1,6 @@
 import {
-  ActionRowBuilder, EmbedBuilder, ModalBuilder, PermissionFlagsBits, SlashCommandBuilder,
-  TextInputBuilder, TextInputStyle, type ChatInputCommandInteraction, ChannelType, type TextChannel,
+  EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder,
+  type ChatInputCommandInteraction, ChannelType, type TextChannel,
 } from "discord.js";
 import {
   createTicketPanel, deleteTicketCategory, listTicketCategories, createTicketCategory,
@@ -17,17 +17,26 @@ export const data = new SlashCommandBuilder()
   .addSubcommandGroup((g) => g.setName("archivo").setDescription("Configura el archivado de tickets cerrados.")
     .addSubcommand((s) => s.setName("configurar").setDescription("Define la categoría para tickets cerrados.").addChannelOption((o) => o.setName("categoria").setDescription("Categoría de Discord para archivar tickets.").addChannelTypes(ChannelType.GuildCategory).setRequired(true)))
     .addSubcommand((s) => s.setName("desactivar").setDescription("Desactiva el archivado automático.")))
-  .addSubcommandGroup((g) => g.setName("categoria").setDescription("Administra categorías.")
-    .addSubcommand((s) => s.setName("crear").setDescription("Crea una categoría."))
-    .addSubcommand((s) => s.setName("eliminar").setDescription("Elimina una categoría.").addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true)))
-    .addSubcommand((s) => s.setName("configurar").setDescription("Configura el canal y el rol de atención.")
+  .addSubcommandGroup((g) => g.setName("categoria").setDescription("Administra categorías de tickets.")
+    .addSubcommand((s) => s.setName("crear").setDescription("Crea una categoría de tickets ya vinculada a Discord.")
+      .addStringOption((o) => o.setName("nombre").setDescription("Nombre visible de la categoría.").setRequired(true).setMaxLength(80))
+      .addStringOption((o) => o.setName("descripcion").setDescription("Descripción que verá el usuario.").setRequired(true).setMaxLength(500))
+      .addChannelOption((o) => o.setName("canal").setDescription("Categoría de Discord donde se crearán los tickets.").addChannelTypes(ChannelType.GuildCategory).setRequired(true))
+      .addRoleOption((o) => o.setName("rol").setDescription("Rol que atenderá los tickets.").setRequired(true))
+      .addStringOption((o) => o.setName("prioridad").setDescription("Prioridad inicial de los tickets.").setRequired(true).addChoices(
+        { name: "Baja", value: "low" }, { name: "Normal", value: "normal" }, { name: "Alta", value: "high" }, { name: "Urgente", value: "urgent" },
+      ).setDefault("normal"))
+      .addIntegerOption((o) => o.setName("maximos").setDescription("Máximo de tickets abiertos por usuario.").setMinValue(1).setMaxValue(20).setDefault(1))
+      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; 0 desactiva el cierre automático.").setMinValue(0).setMaxValue(10080).setDefault(0)))
+    .addSubcommand((s) => s.setName("eliminar").setDescription("Elimina una categoría de tickets.").addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true)))
+    .addSubcommand((s) => s.setName("configurar").setDescription("Modifica una categoría existente.")
       .addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true))
-      .addChannelOption((o) => o.setName("canal").setDescription("Categoría de Discord donde se crearán los tickets.").addChannelTypes(ChannelType.GuildCategory))
-      .addRoleOption((o) => o.setName("rol").setDescription("Rol que tendrá acceso a los tickets."))
-      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; usa 0 para desactivar (0-10080).").setMinValue(0).setMaxValue(10080))
-      .addRoleOption((o) => o.setName("quitar_rol").setDescription("Rol de atención que se quitará."))
-      .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Quita la categoría de Discord configurada."))))
-  .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles.")
+      .addChannelOption((o) => o.setName("canal").setDescription("Nueva categoría de Discord.").addChannelTypes(ChannelType.GuildCategory))
+      .addRoleOption((o) => o.setName("rol").setDescription("Añade un rol de atención."))
+      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; 0 desactiva el cierre automático.").setMinValue(0).setMaxValue(10080))
+      .addRoleOption((o) => o.setName("quitar_rol").setDescription("Quita un rol de atención."))
+      .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord.")))
+  .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles de tickets.")
     .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true)))
     .addSubcommand((s) => s.setName("reparar").setDescription("Repara el panel registrado en un canal.").addChannelOption((o) => o.setName("canal").setDescription("Canal del panel registrado.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
 
@@ -47,19 +56,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     const action = interaction.options.getSubcommand();
     if (action === "configurar") {
       const category = interaction.options.getChannel("categoria", true);
-      if (category.type !== ChannelType.GuildCategory) {
-        await interaction.reply({ content: "Debes seleccionar una categoría de Discord.", ephemeral: true });
-        return;
-      }
       await setTicketArchiveCategory(interaction.guild.id, category.id);
       await interaction.reply({ content: `Archivado de tickets configurado en ${category}.`, ephemeral: true });
       return;
     }
-    if (action === "desactivar") {
-      await setTicketArchiveCategory(interaction.guild.id, null);
-      await interaction.reply({ content: "El archivado automático de tickets ha sido desactivado.", ephemeral: true });
-      return;
-    }
+    await setTicketArchiveCategory(interaction.guild.id, null);
+    await interaction.reply({ content: "El archivado automático de tickets ha sido desactivado.", ephemeral: true });
+    return;
   }
 
   if (group === "categoria") {
@@ -71,17 +74,36 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     const action = interaction.options.getSubcommand();
 
     if (action === "crear") {
-      const modal = new ModalBuilder().setCustomId("ticket:category:create").setTitle("Crear categoría de tickets");
-      const input = (id: string, label: string, style: TextInputStyle, value?: string) =>
-        new TextInputBuilder().setCustomId(id).setLabel(label).setStyle(style).setRequired(true).setMaxLength(style === TextInputStyle.Paragraph ? 500 : 100).setValue(value ?? "");
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input("name", "Nombre", TextInputStyle.Short)),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input("description", "Descripción", TextInputStyle.Paragraph)),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input("priority", "Prioridad: low, normal, high, urgent", TextInputStyle.Short, "normal")),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input("maxOpen", "Máximo de tickets abiertos por usuario", TextInputStyle.Short, "1")),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input("autoClose", "Cierre automático en minutos (5-10080, 0 = desactivado)", TextInputStyle.Short, "0")),
-      );
-      await interaction.showModal(modal);
+      const name = interaction.options.getString("nombre", true).trim();
+      const description = interaction.options.getString("descripcion", true).trim();
+      const discordCategory = interaction.options.getChannel("canal", true);
+      const role = interaction.options.getRole("rol", true);
+      const priority = interaction.options.getString("prioridad", true);
+      const maxOpen = interaction.options.getInteger("maximos", true);
+      const autoClose = interaction.options.getInteger("cierre", true);
+      if (discordCategory.type !== ChannelType.GuildCategory) {
+        await interaction.reply({ content: "El canal indicado debe ser una categoría de Discord.", ephemeral: true });
+        return;
+      }
+      const duplicate = (await listTicketCategories(interaction.guild.id)).find((category) => category.name.toLowerCase() === name.toLowerCase());
+      if (duplicate) {
+        await interaction.reply({ content: `Ya existe una categoría de tickets llamada **${duplicate.name}**.`, ephemeral: true });
+        return;
+      }
+      const category = await createTicketCategory({
+        guildId: interaction.guild.id,
+        name,
+        description,
+        discordCategoryId: discordCategory.id,
+        staffRoleIds: [role.id],
+        priority,
+        maxOpenPerUser: maxOpen,
+        autoCloseMinutes: autoClose === 0 ? null : autoClose,
+      });
+      await interaction.reply({
+        content: `Categoría creada correctamente.\n\n**${category.name}**\n${category.description}\nCategoría de Discord: ${discordCategory}\nRol de atención: ${role}\nID: \`${category.id}\``,
+        ephemeral: true,
+      });
       return;
     }
 
@@ -128,8 +150,12 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         staffRoleIds,
         autoCloseMinutes: autoCloseInput === null ? category.auto_close_minutes : autoCloseMinutes,
       });
+      if (!updated.discord_category_id) {
+        await interaction.reply({ content: "La categoría quedó sin categoría de Discord. Los tickets ya no podrán crearse con ella hasta volver a vincularla.", ephemeral: true });
+        return;
+      }
       await interaction.reply({
-        content: `Configuración actualizada para **${updated.name}**.\nCategoría de Discord: ${updated.discord_category_id ? `<#${updated.discord_category_id}>` : "Sin configurar"}\nRoles de atención: ${updated.staff_role_ids.length ? updated.staff_role_ids.map((roleId) => `<@&${roleId}>`).join(", ") : "Ninguno"}\nCierre automático: ${updated.auto_close_minutes ? `${updated.auto_close_minutes} min` : "Desactivado"}`,
+        content: `Configuración actualizada para **${updated.name}**.\nCategoría de Discord: <#${updated.discord_category_id}>\nRoles de atención: ${updated.staff_role_ids.length ? updated.staff_role_ids.map((roleId) => `<@&${roleId}>`).join(", ") : "Ninguno"}\nCierre automático: ${updated.auto_close_minutes ? `${updated.auto_close_minutes} min` : "Desactivado"}`,
         ephemeral: true,
       });
       return;
@@ -236,7 +262,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }
     const logs = await listTicketLogs(interaction.guild.id, ticket.id, 12);
     const embed = new EmbedBuilder().setTitle(`Historial del Ticket #${ticket.display_number ?? ticket.ticket_number}`).setDescription(
-      logs.length ? logs.map((log) => `**${log.action}** · <@${log.actor_id}> · <t:${Math.floor(new Date(log.created_at).getTime() / 1000)}:R>`).join("\\n") : "No hay acciones registradas todavía.",
+      logs.length ? logs.map((log) => `**${log.action}** · <@${log.actor_id}> · <t:${Math.floor(new Date(log.created_at).getTime() / 1000)}:R>`).join("\n") : "No hay acciones registradas todavía.",
     );
     await interaction.reply({ embeds: [embed], ephemeral: true });
     return;
@@ -248,7 +274,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
   const embed = new EmbedBuilder().setTitle("Categorías de tickets").setDescription(
-    categories.map((c) => `**${c.name}**\n${c.description ?? "Sin descripción"}\nID: \`${c.id}\``).join("\n\n"),
+    categories.map((c) => `**${c.name}**\n${c.description ?? "Sin descripción"}\nDiscord: ${c.discord_category_id ? `<#${c.discord_category_id}>` : "Sin vincular"}\nAtención: ${c.staff_role_ids.length ? c.staff_role_ids.map((roleId) => `<@&${roleId}>`).join(", ") : "Sin rol"}\nID: \`${c.id}\``).join("\n\n"),
   );
   await interaction.reply({ embeds: [embed], ephemeral: true });
 }
