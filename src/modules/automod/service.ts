@@ -136,6 +136,24 @@ async function releaseLockdown(guildId: string, guild: GuildMember["guild"]): Pr
   await clearLockdownChannels(guildId).catch(() => undefined);
 }
 
+export async function stopRaidProtection(guild: GuildMember["guild"]): Promise<void> {
+  const timer = activeRaidTimers.get(guild.id);
+  if (timer) {
+    clearTimeout(timer);
+    activeRaidTimers.delete(guild.id);
+  }
+
+  await releaseLockdown(guild.id, guild);
+
+  await upsertAutomodConfig(guild.id, {
+    raid_active_until: null,
+    raid_started_at: null,
+    raid_join_count: 0,
+  });
+
+  clearAutomodConfigCache(guild.id);
+}
+
 async function finishRaid(guildId: string, guild: GuildMember["guild"]): Promise<void> {
   const current = await getAutomodConfig(guildId);
   if (!current) return;
@@ -295,6 +313,21 @@ export function registerAutomodEvents(client: Client): void {
       await applyRaidAction(member, config, activeUntil, result.join_count);
     } catch (error) {
       console.error("[RAID ERROR]", error);
+    }
+  });
+
+  client.on("guildDelete", (guild) => {
+    const timer = activeRaidTimers.get(guild.id);
+    if (timer) {
+      clearTimeout(timer);
+      activeRaidTimers.delete(guild.id);
+    }
+
+    configCache.delete(guild.id);
+
+    const prefix = guild.id + ":";
+    for (const key of buckets.keys()) {
+      if (key.startsWith(prefix)) buckets.delete(key);
     }
   });
 }
