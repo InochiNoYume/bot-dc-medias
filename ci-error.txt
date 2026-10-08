@@ -2,16 +2,5 @@
 > bot-dc-medias@0.1.0 check
 > tsc --noEmit -p tsconfig.json
 
-src/commands/index.ts(14,58): error TS2322: Type 'typeof import("/home/runner/work/bot-dc-medias/bot-dc-medias/src/commands/core/tutorial", { with: { "resolution-mode": "import" } })' is not assignable to type 'Command'.
-  Types of property 'data' are incompatible.
-    Type 'SlashCommandOptionsOnlyBuilder' is not assignable to type 'SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-      Type 'SlashCommandOptionsOnlyBuilder' is missing the following properties from type 'SlashCommandBuilder': addSubcommandGroup, addSubcommand
-src/commands/ticket/ticket.ts(28,9): error TS2339: Property 'setDefault' does not exist on type 'SlashCommandStringOption'.
-src/commands/ticket/ticket.ts(29,142): error TS2339: Property 'setDefault' does not exist on type 'SlashCommandIntegerOption'.
-src/commands/ticket/ticket.ts(30,162): error TS2339: Property 'setDefault' does not exist on type 'SlashCommandIntegerOption'.
-src/commands/ticket/ticket.ts(39,4): error TS2551: Property 'addSubcommandGroup' does not exist on type 'SlashCommandSubcommandGroupBuilder'. Did you mean 'addSubcommand'?
-src/commands/ticket/ticket.ts(39,24): error TS7006: Parameter 'g' implicitly has an 'any' type.
-src/commands/ticket/ticket.ts(40,21): error TS7006: Parameter 's' implicitly has an 'any' type.
-src/commands/ticket/ticket.ts(40,114): error TS7006: Parameter 'o' implicitly has an 'any' type.
-src/commands/ticket/ticket.ts(41,21): error TS7006: Parameter 's' implicitly has an 'any' type.
-src/commands/ticket/ticket.ts(41,124): error TS7006: Parameter 'o' implicitly has an 'any' type.
+src/commands/ticket/ticket.ts(38,113): error TS1005: ',' expected.
+src/commands/ticket/ticket.ts(39,3): error TS1128: Declaration or statement expected.

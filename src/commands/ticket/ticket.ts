@@ -25,9 +25,9 @@ export const data = new SlashCommandBuilder()
       .addRoleOption((o) => o.setName("rol").setDescription("Rol que atenderá los tickets.").setRequired(true))
       .addStringOption((o) => o.setName("prioridad").setDescription("Prioridad inicial de los tickets.").setRequired(true).addChoices(
         { name: "Baja", value: "low" }, { name: "Normal", value: "normal" }, { name: "Alta", value: "high" }, { name: "Urgente", value: "urgent" },
-      ).setDefault("normal"))
-      .addIntegerOption((o) => o.setName("maximos").setDescription("Máximo de tickets abiertos por usuario.").setMinValue(1).setMaxValue(20).setDefault(1))
-      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; 0 desactiva el cierre automático.").setMinValue(0).setMaxValue(10080).setDefault(0)))
+      )))
+      .addIntegerOption((o) => o.setName("maximos").setDescription("Máximo de tickets abiertos por usuario.").setMinValue(1).setMaxValue(20))
+      .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; 0 desactiva el cierre automático.").setMinValue(0).setMaxValue(10080)))
     .addSubcommand((s) => s.setName("eliminar").setDescription("Elimina una categoría de tickets.").addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true)))
     .addSubcommand((s) => s.setName("configurar").setDescription("Modifica una categoría existente.")
       .addStringOption((o) => o.setName("id").setDescription("ID de la categoría.").setRequired(true))
@@ -35,10 +35,10 @@ export const data = new SlashCommandBuilder()
       .addRoleOption((o) => o.setName("rol").setDescription("Añade un rol de atención."))
       .addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; 0 desactiva el cierre automático.").setMinValue(0).setMaxValue(10080))
       .addRoleOption((o) => o.setName("quitar_rol").setDescription("Quita un rol de atención."))
-      .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord.")))
+      .addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord."))))
   .addSubcommandGroup((g) => g.setName("panel").setDescription("Administra paneles de tickets.")
     .addSubcommand((s) => s.setName("publicar").setDescription("Publica el panel de tickets.").addChannelOption((o) => o.setName("canal").setDescription("Canal donde se publicará.").addChannelTypes(ChannelType.GuildText).setRequired(true)))
-    .addSubcommand((s) => s.setName("reparar").setDescription("Repara el panel registrado en un canal.").addChannelOption((o) => o.setName("canal").setDescription("Canal del panel registrado.").addChannelTypes(ChannelType.GuildText).setRequired(true)))));
+    .addSubcommand((s) => s.setName("reparar").setDescription("Repara el panel registrado en un canal.").addChannelOption((o) => o.setName("canal").setDescription("Canal del panel registrado.").addChannelTypes(ChannelType.GuildText).setRequired(true))));
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) {
@@ -78,9 +78,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       const description = interaction.options.getString("descripcion", true).trim();
       const discordCategory = interaction.options.getChannel("canal", true);
       const role = interaction.options.getRole("rol", true);
-      const priority = interaction.options.getString("prioridad", true);
-      const maxOpen = interaction.options.getInteger("maximos", true);
-      const autoClose = interaction.options.getInteger("cierre", true);
+      const priority = interaction.options.getString("prioridad") ?? "normal";
+      const maxOpen = interaction.options.getInteger("maximos") ?? 1;
+      const autoClose = interaction.options.getInteger("cierre") ?? 0;
       if (discordCategory.type !== ChannelType.GuildCategory) {
         await interaction.reply({ content: "El canal indicado debe ser una categoría de Discord.", ephemeral: true });
         return;
