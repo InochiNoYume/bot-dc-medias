@@ -20,6 +20,10 @@ const client = new Client({
   ],
 });
 
+client.on("error", (error) => {
+  console.error("[DISCORD CLIENT ERROR]", error);
+});
+
 registerReadyEvent(client);
 registerGuildCreateEvent(client);
 registerInteractionEvent(client);
@@ -35,7 +39,11 @@ async function bootstrap(): Promise<void> {
   await client.login(env.discordToken);
 }
 
+let shuttingDown = false;
+
 async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log(`[SHUTDOWN] ${signal}`);
   client.destroy();
   process.exit(0);
@@ -43,6 +51,15 @@ async function shutdown(signal: string): Promise<void> {
 
 process.once("SIGINT", () => void shutdown("SIGINT"));
 process.once("SIGTERM", () => void shutdown("SIGTERM"));
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[UNHANDLED REJECTION]", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("[UNCAUGHT EXCEPTION]", error);
+  void shutdown("UNCAUGHT_EXCEPTION");
+});
 
 bootstrap().catch((error: unknown) => {
   console.error("[BOOT ERROR]", error);
