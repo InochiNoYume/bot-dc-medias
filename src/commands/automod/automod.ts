@@ -143,7 +143,7 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
     }
 
     const trustedRoles = current.trusted_role_ids.length
-      ? current.trusted_role_ids.map((id) => "<@&" + id + ">\").join(", ")
+      ? current.trusted_role_ids.map((id) => "<@&" + id + ">").join(", ")
       : "Ninguno";
 
     await i.reply({
