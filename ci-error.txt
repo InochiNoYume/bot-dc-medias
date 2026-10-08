@@ -2,5 +2,6 @@
 > bot-dc-medias@0.1.0 check
 > tsc --noEmit -p tsconfig.json
 
-src/commands/ticket/ticket.ts(38,113): error TS1005: ',' expected.
-src/commands/ticket/ticket.ts(39,3): error TS1128: Declaration or statement expected.
+src/commands/ticket/ticket.ts(29,8): error TS2339: Property 'addIntegerOption' does not exist on type 'SlashCommandSubcommandGroupBuilder'.
+src/commands/ticket/ticket.ts(29,26): error TS7006: Parameter 'o' implicitly has an 'any' type.
+src/commands/ticket/ticket.ts(30,26): error TS7006: Parameter 'o' implicitly has an 'any' type.
