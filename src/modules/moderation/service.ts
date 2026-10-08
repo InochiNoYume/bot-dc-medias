@@ -38,7 +38,7 @@ export async function executeModerationAction(input: { action: ModerationAction;
     } else if (input.action === "unban") {
       await guild.members.unban(input.targetUser.id, input.reason);
     }
-    await updateModerationCase(record.id, "completed");
+    await updateModerationCase(guild.id, record.id, "completed");
     await sendGuildActionLog(
       guild,
       "moderation_action",
@@ -52,7 +52,7 @@ export async function executeModerationAction(input: { action: ModerationAction;
     );
     return record.case_number;
   } catch (error) {
-    await updateModerationCase(record.id, "failed", { error: error instanceof Error ? error.message : "Unknown error" }).catch(() => undefined);
+    await updateModerationCase(guild.id, record.id, "failed", { error: error instanceof Error ? error.message : "Unknown error" }).catch(() => undefined);
     await sendGuildActionLog(
       guild,
       "moderation_action",
