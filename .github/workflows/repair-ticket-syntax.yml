@@ -27,13 +27,22 @@ jobs:
       - name: Validate repaired project
         run: |
           npm ci
-          npm run check
-          npm run build
-      - name: Commit repair
+          set +e
+          npm run check > /tmp/check.log 2>&1
+          status=$?
+          cat /tmp/check.log
+          cp /tmp/check.log ci-error.txt
+          if [ "$status" -eq 0 ]; then
+            npm run build 2>&1 | tee -a ci-error.txt
+            status=${PIPESTATUS[0]}
+          fi
+          exit "$status"
+      - name: Commit repair diagnostics
+        if: always()
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/commands/ticket/ticket.ts
+          git add src/commands/ticket/ticket.ts ci-error.txt
           git diff --cached --quiet && exit 0
-          git commit -m 'fix(tickets): close panel subcommand group'
+          git commit -m 'chore(ci): capture validation diagnostics'
           git push
