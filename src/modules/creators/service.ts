@@ -265,7 +265,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
     publishedAt: item.publishedAt,
   });
 
-  if (claimResult === "already_sent") {
+  if (claimResult.status === "already_sent") {
     await updateCreatorFeed(feed.guild_id, feed.id, {
       last_external_item_id: item.id,
       last_checked_at: checkedAt,
@@ -273,14 +273,14 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
     return;
   }
 
-  if (claimResult === "in_progress") {
+  if (claimResult.status === "in_progress") {
     await updateCreatorFeed(feed.guild_id, feed.id, { last_checked_at: checkedAt });
     return;
   }
 
   const channel = await client.channels.fetch(feed.channel_id).catch(() => null);
   if (!channel || !channel.isTextBased() || channel.isDMBased()) {
-    await releaseCreatorNotificationClaim(feed.id, item.id);
+    await releaseCreatorNotificationClaim(feed.id, item.id, claimResult.claimedAt);
     return;
   }
 
@@ -303,6 +303,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
       title: item.title,
       url: item.url,
       publishedAt: item.publishedAt,
+      claimedAt: claimResult.claimedAt,
     });
 
     await updateCreatorFeed(feed.guild_id, feed.id, {
@@ -335,6 +336,7 @@ export function registerCreatorNotifications(client: Client): void {
 
   client.once("ready", () => {
     void run();
-    setInterval(() => void run(), 30_000);
+    const timer = setInterval(() => void run(), 30_000);
+    timer.unref();
   });
 }
