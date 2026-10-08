@@ -15,15 +15,8 @@ export async function registerCommands(): Promise<void> {
 
   await rest.put(
     Routes.applicationCommands(env.discordClientId),
-    { body: [] },
+    { body: payload },
   );
 
-  for (const guildId of env.allowedGuildIds) {
-    await rest.put(
-      Routes.applicationGuildCommands(env.discordClientId, guildId),
-      { body: payload },
-    );
-  }
-
-  console.log(`[COMMANDS] ${payload.length} comando(s) registrados únicamente en ${env.allowedGuildIds.length} servidor(es) autorizado(s).`);
+  console.log(`[COMMANDS] ${payload.length} comando(s) registrados globalmente.`);
 }
