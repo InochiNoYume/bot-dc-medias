@@ -7,7 +7,7 @@ import {
   getAutomodConfig,
   upsertAutomodConfig,
 } from "../../modules/automod/repository.js";
-import { clearAutomodConfigCache, stopRaidProtection } from "../../modules/automod/service.js";
+import { clearAutomodConfigCache, isSafeAutomodPattern, stopRaidProtection } from "../../modules/automod/service.js";
 
 export const data = new SlashCommandBuilder()
   .setName("automod")
@@ -143,7 +143,7 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
     }
 
     const trustedRoles = current.trusted_role_ids.length
-      ? current.trusted_role_ids.map((id) => "<@&" + id + ">").join(", ")
+      ? current.trusted_role_ids.map((id) => "<@&" + id + ">\").join(", ")
       : "Ninguno";
 
     await i.reply({
@@ -169,6 +169,14 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
     const value = i.options.getString("valor", true).trim();
     if (!value) {
       await i.reply({ content: "Debes indicar un valor válido.", ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "patron" && action === "add" && !isSafeAutomodPattern(value)) {
+      await i.reply({
+        content: "Ese patrón no es válido o tiene una estructura que puede provocar un consumo excesivo de CPU.",
+        ephemeral: true,
+      });
       return;
     }
 
@@ -235,6 +243,11 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
     const next = action === "add"
       ? [...new Set([...list, role.id])]
       : list.filter((id) => id !== role.id);
+
+    if (action === "add" && !list.includes(role.id) && next.length > 25) {
+      await i.reply({ content: "Has alcanzado el máximo de 25 roles de confianza.", ephemeral: true });
+      return;
+    }
 
     await upsertAutomodConfig(i.guild.id, { trusted_role_ids: next });
     clearAutomodConfigCache(i.guild.id);
