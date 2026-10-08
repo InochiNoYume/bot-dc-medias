@@ -21,10 +21,14 @@ jobs:
           text = p.read_text()
           old = '.addChannelTypes(ChannelType.GuildText).setRequired(true))));'
           new = '.addChannelTypes(ChannelType.GuildText).setRequired(true)))));'
-          if old not in text:
-              raise SystemExit('Expected broken ticket panel expression was not found')
-          p.write_text(text.replace(old, new, 1))
+          if old in text:
+              p.write_text(text.replace(old, new, 1))
           PY
+      - name: Validate repaired project
+        run: |
+          npm ci
+          npm run check
+          npm run build
       - name: Commit repair
         run: |
           git config user.name 'github-actions[bot]'
