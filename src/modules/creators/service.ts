@@ -311,7 +311,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
       last_checked_at: checkedAt,
     });
   } catch (error) {
-    await releaseCreatorNotificationClaim(feed.id, item.id).catch(() => undefined);
+    await releaseCreatorNotificationClaim(feed.id, item.id, claimResult.claimedAt).catch(() => undefined);
     throw error;
   }
 }
