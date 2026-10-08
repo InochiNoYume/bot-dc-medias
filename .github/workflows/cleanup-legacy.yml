@@ -1,0 +1,59 @@
+name: Cleanup legacy commands
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor == 'InochiNoYume'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply cleanup
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          ticket = Path('src/commands/ticket/ticket.ts')
+          text = ticket.read_text()
+          old = '''        { name: "Baja", value: "low" }, { name: "Normal", value: "normal" }, { name: "Alta", value: "high" }, { name: "Urgente", value: "urgent" },
+      )))
+      .addIntegerOption((o) => o.setName("maximos")'''
+          new = '''        { name: "Baja", value: "low" }, { name: "Normal", value: "normal" }, { name: "Alta", value: "high" }, { name: "Urgente", value: "urgent" },
+      ))
+      .addIntegerOption((o) => o.setName("maximos")'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          old = '.addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; 0 desactiva el cierre automático.").setMinValue(0).setMaxValue(10080)))'
+          new = '.addIntegerOption((o) => o.setName("cierre").setDescription("Minutos de inactividad; 0 desactiva el cierre automático.").setMinValue(0).setMaxValue(10080))'
+          if old in text:
+              text = text.replace(old, new, 1)
+          ticket.write_text(text)
+
+          interaction = Path('src/events/interactionCreate.ts')
+          text = interaction.read_text()
+          start = '      if (interaction.isButton() && interaction.customId.startsWith("community:suggestion:vote:")) {'
+          end = '      if (interaction.isButton() && interaction.customId.startsWith("ticket:")) {'
+          if start in text and end in text:
+              before, rest = text.split(start, 1)
+              _, after = rest.split(end, 1)
+              text = before + end + after
+          interaction.write_text(text)
+          PY
+      - name: Validate
+        run: |
+          npm ci
+          npm run check
+          npm run build
+      - name: Commit cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/commands/ticket/ticket.ts src/events/interactionCreate.ts
+          git diff --cached --quiet && exit 0
+          git commit -m 'refactor(bot): remove remaining legacy command handlers'
+          git push
