@@ -6,20 +6,9 @@ function required(name: string): string {
   return value;
 }
 
-function requiredGuildIds(): string[] {
-  const value = required("ALLOWED_GUILD_IDS");
-  const ids = value.split(",").map((id) => id.trim()).filter(Boolean);
-  if (ids.length === 0) throw new Error("ALLOWED_GUILD_IDS must contain at least one guild ID");
-  if (ids.some((id) => !/^\d{17,20}$/.test(id))) {
-    throw new Error("ALLOWED_GUILD_IDS contains an invalid Discord guild ID");
-  }
-  return [...new Set(ids)];
-}
-
 export const env = {
   discordToken: required("DISCORD_TOKEN"),
   discordClientId: required("DISCORD_CLIENT_ID"),
-  allowedGuildIds: requiredGuildIds(),
   supabaseUrl: required("SUPABASE_URL"),
   supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
   twitchClientId: process.env.TWITCH_CLIENT_ID ?? "",
