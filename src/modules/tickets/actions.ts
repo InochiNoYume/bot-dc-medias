@@ -85,12 +85,20 @@ export async function transitionTicket(input: {
   return data as TicketRecord;
 }
 
+async function assertTicketBelongsToGuild(guildId: string, ticketId: string): Promise<void> {
+  const { data, error } = await supabase.from("tickets").select("id").eq("guild_id", guildId).eq("id", ticketId).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("TICKET_NOT_FOUND");
+}
+
 export async function addTicketMember(guildId: string, ticketId: string, userId: string): Promise<void> {
+  await assertTicketBelongsToGuild(guildId, ticketId);
   const { error } = await supabase.from("ticket_members").upsert({ ticket_id: ticketId, user_id: userId });
   if (error) throw error;
 }
 
 export async function removeTicketMember(guildId: string, ticketId: string, userId: string): Promise<void> {
+  await assertTicketBelongsToGuild(guildId, ticketId);
   const { error } = await supabase.from("ticket_members").delete().eq("ticket_id", ticketId).eq("user_id", userId);
   if (error) throw error;
 }
