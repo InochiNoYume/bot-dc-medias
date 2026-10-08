@@ -7,7 +7,7 @@ export function registerTicketActivityEvent(client: Client): void {
       if (!message.guild || message.author.bot || message.channel.isDMBased()) return;
       const ticket = await getTicketByChannel(message.guild.id, message.channel.id);
       if (!ticket || ticket.status === "closed") return;
-      await touchTicketActivity(ticket.id);
+      await touchTicketActivity(message.guild.id, ticket.id);
     } catch (error) {
       console.error("[TICKET ACTIVITY ERROR]", error);
     }
