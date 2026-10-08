@@ -1,6 +1,12 @@
 import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 
-const sections = {
+type TutorialSection = {
+  title: string;
+  description: string;
+  fields: Array<{ name: string; value: string }>;
+};
+
+const sections: Record<"general" | "tickets" | "moderation", TutorialSection> = {
   general: {
     title: "Tutorial del bot",
     description: "Guía rápida para dejar el bot funcionando correctamente en este servidor.",
@@ -35,7 +41,7 @@ const sections = {
       { name: "Permisos", value: "Los comandos sensibles comprueban los permisos de Discord y el alcance del servidor antes de ejecutarse." },
     ],
   },
-} as const;
+};
 
 export const data = new SlashCommandBuilder()
   .setName("tutorial")
@@ -55,8 +61,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  const key = interaction.options.getString("modulo") ?? "general";
-  const section = sections[key as keyof typeof sections];
+  const key = (interaction.options.getString("modulo") ?? "general") as keyof typeof sections;
+  const section = sections[key];
   const embed = new EmbedBuilder()
     .setTitle(section.title)
     .setDescription(section.description)
