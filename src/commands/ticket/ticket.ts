@@ -234,7 +234,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       await interaction.reply({ content: "Este canal no corresponde a un ticket.", ephemeral: true });
       return;
     }
-    const logs = await listTicketLogs(ticket.id, 12);
+    const logs = await listTicketLogs(interaction.guild.id, ticket.id, 12);
     const embed = new EmbedBuilder().setTitle(`Historial del Ticket #${ticket.display_number ?? ticket.ticket_number}`).setDescription(
       logs.length ? logs.map((log) => `**${log.action}** · <@${log.actor_id}> · <t:${Math.floor(new Date(log.created_at).getTime() / 1000)}:R>`).join("\\n") : "No hay acciones registradas todavía.",
     );
