@@ -18,8 +18,13 @@ export async function registerCommands(): Promise<void> {
     { body: payload },
   );
 
-  // Commands are registered globally. Do not also register the same payload
-  // in DEV_GUILD_ID, otherwise Discord can expose duplicate command entries
-  // in that guild (one global + one guild-scoped copy).
-  console.log(`[COMMANDS] ${payload.length} comando(s) registrados globalmente.`);
+  // Remove legacy guild-scoped registrations created by older versions.
+  // The bot now uses global commands only, so the DEV guild must not keep
+  // a second copy of the same command definitions.
+  await rest.put(
+    Routes.applicationGuildCommands(env.discordClientId, env.devGuildId),
+    { body: [] },
+  );
+
+  console.log(`[COMMANDS] ${payload.length} comando(s) registrados globalmente; comandos DEV antiguos limpiados.`);
 }
