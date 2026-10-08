@@ -317,6 +317,41 @@ ID: \`${category.id}\``, ephemeral: true });
         }
       }
 
+      if (interaction.isButton() && interaction.customId.startsWith("community:suggestion:vote:")) {
+        if (!interaction.guild) return;
+        const parts = interaction.customId.split(":");
+        const suggestionId = parts[3];
+        const vote = Number(parts[4]) as 1 | -1;
+        if (!suggestionId || (vote !== 1 && vote !== -1)) {
+          await interaction.reply({ content: "Votación no válida.", ephemeral: true });
+          return;
+        }
+
+        const { getSuggestion, voteSuggestion, suggestionVoteButtons } = await import("../commands/community/community.js");
+        const suggestion = await getSuggestion(interaction.guild.id, suggestionId);
+        if (!suggestion) {
+          await interaction.reply({ content: "Esta sugerencia ya no existe.", ephemeral: true });
+          return;
+        }
+
+        const result = await voteSuggestion(interaction.guild.id, suggestionId, interaction.user.id, vote);
+        const updated = { ...suggestion, upvotes: result.upvotes, downvotes: result.downvotes };
+        const statusLabels = { pending: "Pendiente", approved: "Aprobada", rejected: "Rechazada", implemented: "Implementada" } as const;
+        const embed = new EmbedBuilder()
+          .setTitle(updated.title)
+          .setDescription(updated.description)
+          .addFields(
+            { name: "Estado", value: statusLabels[updated.status as keyof typeof statusLabels], inline: true },
+            { name: "Votos", value: `A favor: **${updated.upvotes}**\\nEn contra: **${updated.downvotes}**`, inline: true },
+            { name: "Autor", value: `<@${updated.author_id}>`, inline: true },
+          )
+          .setFooter({ text: `ID: ${updated.id}` })
+          .setTimestamp(new Date(updated.created_at));
+
+        await interaction.update({ embeds: [embed], components: [suggestionVoteButtons(updated.id)] });
+        return;
+      }
+
       if (interaction.isStringSelectMenu() && interaction.customId === "logs:events") {
         if (!interaction.guild || !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
           await interaction.reply({ content: "Necesitas el permiso Gestionar servidor.", ephemeral: true });
