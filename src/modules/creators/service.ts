@@ -240,12 +240,12 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
   const checkedAt = new Date().toISOString();
   const item = await fetchLatest(feed);
   if (!item) {
-    await updateCreatorFeed(feed.id, { last_checked_at: checkedAt });
+    await updateCreatorFeed(feed.guild_id, feed.id, { last_checked_at: checkedAt });
     return;
   }
 
   if (!feed.last_external_item_id) {
-    await updateCreatorFeed(feed.id, {
+    await updateCreatorFeed(feed.guild_id, feed.id, {
       last_external_item_id: item.id,
       last_checked_at: checkedAt,
     });
@@ -253,7 +253,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
   }
 
   if (feed.last_external_item_id === item.id) {
-    await updateCreatorFeed(feed.id, { last_checked_at: checkedAt });
+    await updateCreatorFeed(feed.guild_id, feed.id, { last_checked_at: checkedAt });
     return;
   }
 
@@ -266,7 +266,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
   });
 
   if (!claimed) {
-    await updateCreatorFeed(feed.id, {
+    await updateCreatorFeed(feed.guild_id, feed.id, {
       last_external_item_id: item.id,
       last_checked_at: checkedAt,
     });
@@ -300,7 +300,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
       publishedAt: item.publishedAt,
     });
 
-    await updateCreatorFeed(feed.id, {
+    await updateCreatorFeed(feed.guild_id, feed.id, {
       last_external_item_id: item.id,
       last_checked_at: checkedAt,
     });
