@@ -68,10 +68,11 @@ export async function deleteCreatorFeed(guildId: string, id: string): Promise<vo
 }
 
 export async function updateCreatorFeed(
+  guildId: string,
   id: string,
   patch: Partial<Pick<CreatorFeed, "channel_id" | "mention_role_id" | "enabled" | "poll_interval_seconds" | "last_external_item_id" | "last_checked_at">>,
 ): Promise<void> {
-  const { error } = await supabase.from("creator_feeds").update(patch).eq("id", id);
+  const { error } = await supabase.from("creator_feeds").update(patch).eq("guild_id", guildId).eq("id", id);
   if (error) throw error;
 }
 
@@ -91,6 +92,7 @@ export async function claimCreatorNotification(input: {
       url: input.url,
       published_at: input.publishedAt,
       claimed_at: new Date().toISOString(),
+      sent_at: null,
     })
     .select("id")
     .maybeSingle();
@@ -105,7 +107,8 @@ export async function releaseCreatorNotificationClaim(feedId: string, externalIt
     .from("creator_notifications")
     .delete()
     .eq("feed_id", feedId)
-    .eq("external_item_id", externalItemId);
+    .eq("external_item_id", externalItemId)
+    .is("sent_at", null);
   if (error) throw error;
 }
 
@@ -122,8 +125,10 @@ export async function markCreatorNotificationSent(input: {
       title: input.title,
       url: input.url,
       published_at: input.publishedAt,
+      sent_at: new Date().toISOString(),
     })
     .eq("feed_id", input.feedId)
+    .eq("external_item_id", input.externalItemId)
     .eq("external_item_id", input.externalItemId);
   if (error) throw error;
 }
