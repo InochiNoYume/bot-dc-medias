@@ -15,6 +15,8 @@ const buckets = new Map<string, number[]>();
 const activeRaidTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const configCache = new Map<string, { config: AutomodConfig | null; expires: number }>();
 const MAX_SPAM_WINDOW_MS = 60_000;
+const MAX_PATTERN_LENGTH = 200;
+const MAX_MESSAGE_MATCH_LENGTH = 2000;
 
 const normalize = (value: string): string =>
   value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -27,13 +29,43 @@ async function getCachedAutomodConfig(guildId: string): Promise<AutomodConfig | 
   return config;
 }
 
+function hasUnsafeRegexStructure(pattern: string): boolean {
+  if (/\\(?:[1-9][0-9]*|k<[^>]+>)/u.test(pattern)) return true;
+  if (/\(\?[=!<]/u.test(pattern)) return true;
+  if (/\((?:[^()\\]|\\.)*[+*?](?:[^()\\]|\\.)*\)(?:[+*?]|\{\d)/u.test(pattern)) return true;
+  if (/\((?:[^()\\]|\\.)*\|(?:[^()\\]|\\.)*\)(?:[+*?]|\{\d)/u.test(pattern)) return true;
+  return false;
+}
+
+export function isSafeAutomodPattern(pattern: string): boolean {
+  const value = pattern.trim();
+  if (!value || value.length > MAX_PATTERN_LENGTH) return false;
+  if (hasUnsafeRegexStructure(value)) return false;
+  try {
+    new RegExp(value, "iu");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function match(content: string, list: string[]): string | null {
-  const normalizedContent = normalize(content);
+  const boundedContent = content.length > MAX_MESSAGE_MATCH_LENGTH
+    ? content.slice(0, MAX_MESSAGE_MATCH_LENGTH)
+    : content;
+  const normalizedContent = normalize(boundedContent);
+
   for (const raw of list) {
     const pattern = raw.trim();
-    if (!pattern) continue;
+    if (!pattern || pattern.length > MAX_PATTERN_LENGTH) continue;
+
+    if (!isSafeAutomodPattern(pattern)) {
+      if (normalizedContent.includes(normalize(pattern))) return pattern;
+      continue;
+    }
+
     try {
-      if (new RegExp(pattern, "iu").test(content) || normalizedContent.includes(normalize(pattern))) {
+      if (new RegExp(pattern, "iu").test(boundedContent) || normalizedContent.includes(normalize(pattern))) {
         return pattern;
       }
     } catch {
@@ -103,8 +135,6 @@ async function ensureLockdown(guild: GuildMember["guild"]): Promise<void> {
 
     try {
       if (!existingState) {
-        // Persist before touching Discord so a crash cannot leave an
-        // untracked lockdown that survives the process restart.
         await saveLockdownChannel(guild.id, channel.id, previous);
       }
 
@@ -117,7 +147,6 @@ async function ensureLockdown(guild: GuildMember["guild"]): Promise<void> {
       if (!existingState) {
         await deleteLockdownChannel(guild.id, channel.id).catch(() => undefined);
       }
-      // Ignore channels where the bot cannot modify the overwrite.
     }
   }
 }
@@ -127,14 +156,22 @@ async function releaseLockdown(guildId: string, guild: GuildMember["guild"]): Pr
 
   for (const state of states) {
     const channel = guild.channels.cache.get(state.channel_id);
-    if (!channel || !("permissionOverwrites" in channel)) continue;
+    if (!channel || !("permissionOverwrites" in channel)) {
+      await deleteLockdownChannel(guildId, state.channel_id).catch(() => undefined);
+      continue;
+    }
 
-    await channel.permissionOverwrites
-      .edit(guild.roles.everyone, { SendMessages: state.previous_send_messages }, { reason: "Anti-raid finalizado" })
-      .catch(() => undefined);
+    try {
+      await channel.permissionOverwrites.edit(
+        guild.roles.everyone,
+        { SendMessages: state.previous_send_messages },
+        { reason: "Anti-raid finalizado" },
+      );
+      await deleteLockdownChannel(guildId, state.channel_id);
+    } catch {
+      // Keep the persistent state so a later restart/recovery can retry it.
+    }
   }
-
-  await clearLockdownChannels(guildId).catch(() => undefined);
 }
 
 export async function stopRaidProtection(guild: GuildMember["guild"]): Promise<void> {
@@ -160,7 +197,7 @@ async function finishRaid(guildId: string, guild: GuildMember["guild"]): Promise
   if (!current) return;
 
   const activeUntil = current.raid_active_until ? new Date(current.raid_active_until).getTime() : 0;
-  if (activeUntil > Date.now()) {
+  if (activeUntil > Date.now() && current.enabled && current.raid_enabled) {
     scheduleRaidEnd(guildId, guild, activeUntil);
     return;
   }
@@ -245,7 +282,24 @@ async function recoverActiveRaids(client: Client): Promise<void> {
   for (const guild of client.guilds.cache.values()) {
     try {
       const config = await getAutomodConfig(guild.id);
-      if (!config?.enabled || !config.raid_enabled || !config.raid_active_until) continue;
+      if (!config) continue;
+
+      if (!config.enabled || !config.raid_enabled) {
+        await releaseLockdown(guild.id, guild);
+        if (config.raid_active_until || config.raid_started_at || config.raid_join_count > 0) {
+          await upsertAutomodConfig(guild.id, {
+            raid_active_until: null,
+            raid_started_at: null,
+            raid_join_count: 0,
+          });
+        }
+        continue;
+      }
+
+      if (!config.raid_active_until) {
+        await releaseLockdown(guild.id, guild);
+        continue;
+      }
 
       const until = new Date(config.raid_active_until).getTime();
       if (until <= Date.now()) {
@@ -255,6 +309,8 @@ async function recoverActiveRaids(client: Client): Promise<void> {
 
       if (config.raid_lockdown) {
         await ensureLockdown(guild);
+      } else {
+        await releaseLockdown(guild.id, guild);
       }
       scheduleRaidEnd(guild.id, guild, until);
     } catch (error) {
