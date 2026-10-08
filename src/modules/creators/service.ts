@@ -257,7 +257,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
     return;
   }
 
-  const claimed = await claimCreatorNotification({
+  const claimResult = await claimCreatorNotification({
     feedId: feed.id,
     externalItemId: item.id,
     title: item.title,
@@ -265,11 +265,16 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
     publishedAt: item.publishedAt,
   });
 
-  if (!claimed) {
+  if (claimResult === "already_sent") {
     await updateCreatorFeed(feed.guild_id, feed.id, {
       last_external_item_id: item.id,
       last_checked_at: checkedAt,
     });
+    return;
+  }
+
+  if (claimResult === "in_progress") {
+    await updateCreatorFeed(feed.guild_id, feed.id, { last_checked_at: checkedAt });
     return;
   }
 
