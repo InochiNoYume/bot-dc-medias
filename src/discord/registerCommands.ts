@@ -18,10 +18,8 @@ export async function registerCommands(): Promise<void> {
     { body: payload },
   );
 
-  await rest.put(
-    Routes.applicationGuildCommands(env.discordClientId, env.devGuildId),
-    { body: payload },
-  );
-
-  console.log(`[COMMANDS] ${payload.length} comando(s) registrados globalmente y en DEV.`);
+  // Commands are registered globally. Do not also register the same payload
+  // in DEV_GUILD_ID, otherwise Discord can expose duplicate command entries
+  // in that guild (one global + one guild-scoped copy).
+  console.log(`[COMMANDS] ${payload.length} comando(s) registrados globalmente.`);
 }
