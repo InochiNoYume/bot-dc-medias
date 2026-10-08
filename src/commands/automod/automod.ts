@@ -174,6 +174,12 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
 
     const key = subcommand === "palabra" ? "bad_words" : "blocked_patterns";
     const list = current?.[key] ?? [];
+
+    if (action === "add" && !list.includes(value) && list.length >= 100) {
+      await i.reply({ content: "Has alcanzado el máximo de 100 entradas para esta lista.", ephemeral: true });
+      return;
+    }
+
     const next = action === "add"
       ? [...new Set([...list, value])]
       : list.filter((item) => item !== value);
