@@ -76,13 +76,18 @@ export async function updateCreatorFeed(
   if (error) throw error;
 }
 
+export type CreatorNotificationClaimResult = "claimed" | "already_sent" | "in_progress";
+
+const CREATOR_CLAIM_TIMEOUT_MS = 10 * 60 * 1000;
+
 export async function claimCreatorNotification(input: {
   feedId: string;
   externalItemId: string;
   title: string;
   url: string;
   publishedAt: string | null;
-}): Promise<boolean> {
+}): Promise<CreatorNotificationClaimResult> {
+  const claimedAt = new Date().toISOString();
   const { data, error } = await supabase
     .from("creator_notifications")
     .insert({
@@ -91,15 +96,54 @@ export async function claimCreatorNotification(input: {
       title: input.title,
       url: input.url,
       published_at: input.publishedAt,
-      claimed_at: new Date().toISOString(),
+      claimed_at: claimedAt,
       sent_at: null,
     })
     .select("id")
     .maybeSingle();
 
-  if (error?.code === "23505") return false;
-  if (error) throw error;
-  return Boolean(data);
+  if (!error) return data ? "claimed" : "in_progress";
+  if (error.code !== "23505") throw error;
+
+  const existing = await supabase
+    .from("creator_notifications")
+    .select("sent_at, claimed_at")
+    .eq("feed_id", input.feedId)
+    .eq("external_item_id", input.externalItemId)
+    .maybeSingle();
+  if (existing.error) throw existing.error;
+  if (!existing.data) return "in_progress";
+  if (existing.data.sent_at) return "already_sent";
+
+  const existingClaimedAt = existing.data.claimed_at ? Date.parse(existing.data.claimed_at) : 0;
+  if (existingClaimedAt && Date.now() - existingClaimedAt < CREATOR_CLAIM_TIMEOUT_MS) {
+    return "in_progress";
+  }
+
+  const { error: releaseError } = await supabase
+    .from("creator_notifications")
+    .delete()
+    .eq("feed_id", input.feedId)
+    .eq("external_item_id", input.externalItemId)
+    .is("sent_at", null);
+  if (releaseError) throw releaseError;
+
+  const retry = await supabase
+    .from("creator_notifications")
+    .insert({
+      feed_id: input.feedId,
+      external_item_id: input.externalItemId,
+      title: input.title,
+      url: input.url,
+      published_at: input.publishedAt,
+      claimed_at: claimedAt,
+      sent_at: null,
+    })
+    .select("id")
+    .maybeSingle();
+  if (retry.error?.code === "23505") return "in_progress";
+  if (retry.error) throw retry.error;
+  return retry.data ? "claimed" : "in_progress";
 }
 
 export async function releaseCreatorNotificationClaim(feedId: string, externalItemId: string): Promise<void> {
@@ -128,6 +172,7 @@ export async function markCreatorNotificationSent(input: {
       sent_at: new Date().toISOString(),
     })
     .eq("feed_id", input.feedId)
-    .eq("external_item_id", input.externalItemId);
+    .eq("external_item_id", input.externalItemId)
+    .is("sent_at", null);
   if (error) throw error;
 }
