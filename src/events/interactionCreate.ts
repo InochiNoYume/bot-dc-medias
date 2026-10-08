@@ -12,6 +12,14 @@ import { sendGuildActionLog } from "../modules/logging/service.js";
 const commandMap = new Map(commands.map((command) => [command.data.name, command]));
 const commandCooldowns = new Map<string, number>();
 const COMMAND_COOLDOWN_MS = 1500;
+const COMMAND_COOLDOWN_CLEANUP_MS = 60_000;
+const cooldownCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [key, expiresAt] of commandCooldowns) {
+    if (expiresAt <= now) commandCooldowns.delete(key);
+  }
+}, COMMAND_COOLDOWN_CLEANUP_MS);
+cooldownCleanupTimer.unref();
 
 
 async function logTicketActionAndDiscord(
