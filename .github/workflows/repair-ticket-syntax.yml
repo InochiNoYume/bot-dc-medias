@@ -13,16 +13,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Repair missing parenthesis
+      - name: Repair ticket and command typing
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('src/commands/ticket/ticket.ts')
-          text = p.read_text()
-          old = '.addChannelTypes(ChannelType.GuildText).setRequired(true))));'
-          new = '.addChannelTypes(ChannelType.GuildText).setRequired(true)))));'
-          if old in text:
+
+          def replace_once(path: str, old: str, new: str):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected 1 match, found {count}: {old!r}')
               p.write_text(text.replace(old, new, 1))
+
+          replace_once('src/core/command.ts',
+              'import type { ChatInputCommandInteraction, SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from "discord.js";',
+              'import type { ChatInputCommandInteraction, SlashCommandBuilder, SlashCommandOptionsOnlyBuilder, SlashCommandSubcommandsOnlyBuilder } from "discord.js";')
+          replace_once('src/core/command.ts',
+              'data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;',
+              'data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;')
+
+          replace_once('src/commands/ticket/ticket.ts',
+              '.setDefault("normal"))',
+              '))')
+          replace_once('src/commands/ticket/ticket.ts',
+              '.setMaxValue(20).setDefault(1))',
+              '.setMaxValue(20))')
+          replace_once('src/commands/ticket/ticket.ts',
+              '.setMaxValue(10080).setDefault(0)))',
+              '.setMaxValue(10080)))')
+          replace_once('src/commands/ticket/ticket.ts',
+              'const priority = interaction.options.getString("prioridad", true);',
+              'const priority = interaction.options.getString("prioridad") ?? "normal";')
+          replace_once('src/commands/ticket/ticket.ts',
+              'const maxOpen = interaction.options.getInteger("maximos", true);',
+              'const maxOpen = interaction.options.getInteger("maximos") ?? 1;')
+          replace_once('src/commands/ticket/ticket.ts',
+              'const autoClose = interaction.options.getInteger("cierre", true);',
+              'const autoClose = interaction.options.getInteger("cierre") ?? 0;')
+          replace_once('src/commands/ticket/ticket.ts',
+              '.addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord.")))\n  .addSubcommandGroup((g) => g.setName("panel")',
+              '.addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord."))))\n  .addSubcommandGroup((g) => g.setName("panel")')
+          replace_once('src/commands/ticket/ticket.ts',
+              '.addChannelTypes(ChannelType.GuildText).setRequired(true)))));',
+              '.addChannelTypes(ChannelType.GuildText).setRequired(true))));')
           PY
       - name: Validate repaired project
         run: |
@@ -42,7 +76,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/commands/ticket/ticket.ts ci-error.txt
+          git add src/core/command.ts src/commands/ticket/ticket.ts ci-error.txt
           git diff --cached --quiet && exit 0
-          git commit -m 'chore(ci): capture validation diagnostics'
+          git commit -m 'fix(tickets): repair command builders and typing'
           git push
