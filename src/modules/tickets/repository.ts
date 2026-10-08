@@ -4,7 +4,7 @@ import { supabase } from "../../database/supabase.js";
 export async function listTicketCategories(guildId: string): Promise<TicketCategory[]> {
   const { data, error } = await supabase.from("ticket_categories").select("*").eq("guild_id", guildId).eq("enabled", true).order("name");
   if (error) throw error;
-  return (data ?? []) as TicketCategory[];
+  return (data ?? []).filter((category) => category.discord_category_id && category.staff_role_ids?.length) as TicketCategory[];
 }
 
 export async function getTicketCategory(guildId: string, categoryId: string): Promise<TicketCategory | null> {
@@ -14,6 +14,7 @@ export async function getTicketCategory(guildId: string, categoryId: string): Pr
 }
 
 export async function createTicketCategory(input: { guildId: string; name: string; description: string; discordCategoryId: string | null; staffRoleIds: string[]; priority: string; maxOpenPerUser: number; autoCloseMinutes: number | null }): Promise<TicketCategory> {
+  if (!input.discordCategoryId || input.staffRoleIds.length === 0) throw new Error("TICKET_CATEGORY_INCOMPLETE");
   const { data, error } = await supabase.from("ticket_categories").insert({
     guild_id: input.guildId, name: input.name, description: input.description, discord_category_id: input.discordCategoryId,
     staff_role_ids: input.staffRoleIds, priority: input.priority, max_open_per_user: input.maxOpenPerUser, auto_close_minutes: input.autoCloseMinutes,
@@ -92,7 +93,6 @@ export async function updateTicketPanelMessage(guildId: string, panelId: string,
     .eq("id", panelId);
   if (error) throw error;
 }
-
 
 export async function listInactiveTickets(): Promise<Array<TicketRecord & { category: TicketCategory }>> {
   const { data, error } = await supabase
