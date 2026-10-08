@@ -95,12 +95,12 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   if (subcommand === "activar" || subcommand === "desactivar") {
-    await updateCreatorFeed(feed.id, { enabled: subcommand === "activar" });
+    await updateCreatorFeed(interaction.guild.id, feed.id, { enabled: subcommand === "activar" });
     await interaction.reply({ content: "Configuración " + (subcommand === "activar" ? "activada" : "desactivada") + ".", ephemeral: true });
     return;
   }
 
   const seconds = interaction.options.getInteger("segundos", true);
-  await updateCreatorFeed(feed.id, { poll_interval_seconds: seconds });
+  await updateCreatorFeed(interaction.guild.id, feed.id, { poll_interval_seconds: seconds });
   await interaction.reply({ content: "Intervalo actualizado a " + seconds + " segundos.", ephemeral: true });
 }
