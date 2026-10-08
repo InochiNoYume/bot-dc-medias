@@ -1,7 +1,17 @@
 import type { TextChannel } from "discord.js";
 import { supabase } from "../../database/supabase.js";
+import { getTicketById } from "./actions.js";
 
 export async function createTicketTranscript(ticketId: string, guildId: string, channel: TextChannel): Promise<void> {
+  if (channel.guild.id !== guildId) {
+    throw new Error("TICKET_GUILD_MISMATCH");
+  }
+
+  const ticket = await getTicketById(guildId, ticketId);
+  if (!ticket || ticket.channel_id !== channel.id) {
+    throw new Error("TICKET_CHANNEL_MISMATCH");
+  }
+
   const messages: string[] = [];
   let before: string | undefined;
 
