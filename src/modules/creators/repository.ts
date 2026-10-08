@@ -120,7 +120,7 @@ export async function claimCreatorNotification(input: {
 
   const existingClaimedAt = existing.data.claimed_at ? Date.parse(existing.data.claimed_at) : 0;
   if (existingClaimedAt && Date.now() - existingClaimedAt < CREATOR_CLAIM_TIMEOUT_MS) {
-    return "in_progress";
+    return { status: "in_progress" };
   }
 
   const { error: releaseError } = await supabase
