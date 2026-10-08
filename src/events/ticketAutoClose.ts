@@ -27,7 +27,7 @@ async function processInactiveTickets(client: Client): Promise<void> {
 
     const channel = guild.channels.cache.get(ticket.channel_id);
     if (!channel || channel.type !== ChannelType.GuildText) {
-      await transitionTicket({ ticketId: ticket.id, fromStatuses: ["open", "claimed"], toStatus: "closed", closedBy: client.user?.id ?? "system", closeReason: "Cierre automático por inactividad.", expectedLastActivityAt: ticket.last_activity_at });
+      await transitionTicket({ guildId: ticket.guild_id, ticketId: ticket.id, fromStatuses: ["open", "claimed"], toStatus: "closed", closedBy: client.user?.id ?? "system", closeReason: "Cierre automático por inactividad.", expectedLastActivityAt: ticket.last_activity_at });
       await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "auto_closed", details: { inactiveMinutes: minutes } });
     await sendGuildActionLog(guild, "ticket_action", "Ticket cerrado automáticamente", `El ticket #${ticket.display_number ?? ticket.id} se cerró por inactividad.`, [{ name: "Inactividad", value: `${minutes} minutos`, inline: true }]);
             continue;
@@ -51,7 +51,7 @@ async function processInactiveTickets(client: Client): Promise<void> {
     if (archiveCategory?.type === ChannelType.GuildCategory) {
       await textChannel.permissionOverwrites.edit(ticket.owner_id, { ViewChannel: false, SendMessages: false });
       await textChannel.setParent(archiveCategory.id, { lockPermissions: false });
-      await updateTicket(ticket.id, { archivedAt: new Date().toISOString() });
+      await updateTicket(ticket.guild_id, ticket.id, { archivedAt: new Date().toISOString() });
       await logTicketAction({ guildId: ticket.guild_id, ticketId: ticket.id, actorId: client.user?.id ?? "system", action: "archived", details: { categoryId: archiveCategory.id } });
       await sendGuildActionLog(guild, "ticket_action", "Ticket archivado", `El ticket #${ticket.display_number ?? ticket.id} fue archivado.`, [{ name: "Categoría", value: `<#${archiveCategory.id}>`, inline: true }]);
     }
