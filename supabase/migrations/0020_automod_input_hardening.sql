@@ -1,10 +1,10 @@
-create or replace function public.automod_array_items_max_length(values text[], max_length integer)
+create or replace function public.automod_array_items_max_length(p_values text[], p_max_length integer)
 returns boolean
 language sql
 immutable
 as $$
-  select coalesce(bool_and(length(value) <= max_length), true)
-  from unnest(values) as value;
+  select coalesce(bool_and(length(value) <= p_max_length), true)
+  from unnest(p_values) as value;
 $$;
 
 revoke all on function public.automod_array_items_max_length(text[], integer) from public, anon, authenticated;
