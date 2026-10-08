@@ -4,7 +4,8 @@ import { supabase } from "../../database/supabase.js";
 export async function listTicketCategories(guildId: string): Promise<TicketCategory[]> {
   const { data, error } = await supabase.from("ticket_categories").select("*").eq("guild_id", guildId).eq("enabled", true).order("name");
   if (error) throw error;
-  return (data ?? []).filter((category) => category.discord_category_id && category.staff_role_ids?.length) as TicketCategory[];
+  const categories = (data ?? []) as unknown as TicketCategory[];
+  return categories.filter((category) => Boolean(category.discord_category_id) && category.staff_role_ids.length > 0);
 }
 
 export async function getTicketCategory(guildId: string, categoryId: string): Promise<TicketCategory | null> {
