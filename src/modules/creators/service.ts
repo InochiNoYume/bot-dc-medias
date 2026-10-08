@@ -105,6 +105,7 @@ async function getKickAccessToken(): Promise<string | null> {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS),
   });
 
   if (!response.ok) throw new Error("Kick OAuth respondió " + response.status);
