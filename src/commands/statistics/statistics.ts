@@ -1,6 +1,5 @@
 import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import {
-  countRows,
   getCreatorStats,
   getModerationCases,
   getRatings,
@@ -34,10 +33,7 @@ function averageDuration(rows: Array<{ start: string; end: string | null }>): nu
 
 function staffList(entries: Array<[string, number]>, limit = 10): string {
   if (!entries.length) return "Sin datos";
-  return entries
-    .slice(0, limit)
-    .map(([id, count], index) => `${index + 1}. <@${id}> — **${count}**`)
-    .join("\n");
+  return entries.slice(0, limit).map(([id, count], index) => `${index + 1}. <@${id}> — **${count}**`).join("\n");
 }
 
 function mapCounts(values: string[]): Array<[string, number]> {
@@ -54,15 +50,12 @@ async function buildTicketStats(guildId: string) {
   const closed = tickets.filter((ticket) => ticket.status === "closed").length;
   const avgResponseMinutes = averageDuration(tickets.map((ticket) => ({ start: ticket.created_at, end: ticket.claimed_at })));
   const avgCloseMinutes = averageDuration(tickets.map((ticket) => ({ start: ticket.created_at, end: ticket.closed_at })));
-  const staff = mapCounts(
-    tickets.map((ticket) => ticket.closed_by ?? ticket.claimed_by).filter((id): id is string => Boolean(id)),
-  );
+  const staff = mapCounts(tickets.map((ticket) => ticket.closed_by ?? ticket.claimed_by).filter((id): id is string => Boolean(id)));
   const categoryCounts = new Map<string, number>();
   for (const ticket of tickets) {
     const name = categoryNames.get(ticket.category_id) ?? ticket.category_id;
     categoryCounts.set(name, (categoryCounts.get(name) ?? 0) + 1);
   }
-
   return {
     total: tickets.length,
     open,
@@ -111,7 +104,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     await interaction.reply({ content: "Este comando solo puede utilizarse dentro de un servidor.", ephemeral: true });
     return;
   }
-
   const subcommand = interaction.options.getSubcommand();
   if (subcommand !== "servidor" && !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
     await interaction.reply({ content: "Necesitas el permiso Gestionar servidor.", ephemeral: true });
@@ -120,7 +112,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
   try {
     const guildId = interaction.guild.id;
-
     if (subcommand === "tickets") {
       const stats = await buildTicketStats(guildId);
       await interaction.reply({ embeds: [new EmbedBuilder().setTitle("Estadísticas de tickets").addFields(
@@ -136,7 +127,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       ).setFooter({ text: "Basado en todo el historial disponible" }).setTimestamp()] });
       return;
     }
-
     if (subcommand === "moderacion") {
       const stats = await buildModerationStats(guildId);
       await interaction.reply({ embeds: [new EmbedBuilder().setTitle("Estadísticas de moderación").addFields(
@@ -149,7 +139,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       ).setTimestamp()] });
       return;
     }
-
     if (subcommand === "staff") {
       const [tickets, moderation] = await Promise.all([buildTicketStats(guildId), buildModerationStats(guildId)]);
       const combined = new Map<string, number>();
@@ -171,21 +160,17 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       buildSuggestionStats(guildId),
       getCreatorStats(guildId),
     ]);
-    const suggestionStatus = countList(suggestions.byStatus);
     await interaction.reply({ embeds: [new EmbedBuilder().setTitle(`Estadísticas de ${interaction.guild.name}`).addFields(
       { name: "Tickets", value: `Total: **${tickets.total}**\nAbiertos: **${tickets.open}**\nCerrados: **${tickets.closed}**`, inline: true },
       { name: "Moderación", value: `Casos: **${moderation.total}**\nCompletados: **${moderation.completed}**`, inline: true },
       { name: "Valoraciones", value: ratings.count ? `${ratings.average.toFixed(2)}/5 (${ratings.count})` : "Sin valoraciones", inline: true },
-      { name: "Sugerencias", value: `Total: **${suggestions.total}**\nVotos: **${suggestions.votes}`, inline: true },
+      { name: "Sugerencias", value: `Total: **${suggestions.total}**\nVotos: **${suggestions.votes}**`, inline: true },
       { name: "Creadores", value: `Feeds: **${creators.feeds}**\nNotificaciones: **${creators.notifications}**`, inline: true },
-      { name: "Estado de sugerencias", value: suggestionStatus, inline: false },
+      { name: "Estado de sugerencias", value: countList(suggestions.byStatus), inline: false },
     ).setFooter({ text: "Estadísticas aisladas por servidor" }).setTimestamp()] });
   } catch (error) {
     console.error("[STATS] Error:", error);
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: "No se pudieron obtener las estadísticas.", ephemeral: true });
-    } else {
-      await interaction.reply({ content: "No se pudieron obtener las estadísticas.", ephemeral: true });
-    }
+    if (interaction.replied || interaction.deferred) await interaction.followUp({ content: "No se pudieron obtener las estadísticas.", ephemeral: true });
+    else await interaction.reply({ content: "No se pudieron obtener las estadísticas.", ephemeral: true });
   }
 }
