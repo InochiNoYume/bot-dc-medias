@@ -14,4 +14,6 @@ export const env = {
   supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
   twitchClientId: process.env.TWITCH_CLIENT_ID ?? "",
   twitchClientSecret: process.env.TWITCH_CLIENT_SECRET ?? "",
+  kickClientId: process.env.KICK_CLIENT_ID ?? "",
+  kickClientSecret: process.env.KICK_CLIENT_SECRET ?? "",
 } as const;
