@@ -128,7 +128,6 @@ export async function markCreatorNotificationSent(input: {
       sent_at: new Date().toISOString(),
     })
     .eq("feed_id", input.feedId)
-    .eq("external_item_id", input.externalItemId)
     .eq("external_item_id", input.externalItemId);
   if (error) throw error;
 }
