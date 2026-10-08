@@ -52,8 +52,8 @@ jobs:
               'const autoClose = interaction.options.getInteger("cierre", true);',
               'const autoClose = interaction.options.getInteger("cierre") ?? 0;')
           replace_once('src/commands/ticket/ticket.ts',
-              '.addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord.")))\n  .addSubcommandGroup((g) => g.setName("panel")',
-              '.addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord."))))\n  .addSubcommandGroup((g) => g.setName("panel")')
+              '.addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord."))))\n  .addSubcommandGroup((g) => g.setName("panel")',
+              '.addBooleanOption((o) => o.setName("quitar_canal").setDescription("Desvincula la categoría de Discord.")))\n  .addSubcommandGroup((g) => g.setName("panel")')
           replace_once('src/commands/ticket/ticket.ts',
               '.addChannelTypes(ChannelType.GuildText).setRequired(true)))));',
               '.addChannelTypes(ChannelType.GuildText).setRequired(true))));')
