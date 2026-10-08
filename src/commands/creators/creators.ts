@@ -43,6 +43,14 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const subcommand = interaction.options.getSubcommand();
   const feeds = await listCreatorFeeds(interaction.guild.id);
 
+  if (subcommand === "listar") {
+    const content = feeds.length
+      ? feeds.map((item) => item.id + " · " + item.display_name + " · " + item.platform + " · <#" + item.channel_id + "> · " + (item.enabled ? "Activo" : "Inactivo") + " · " + item.poll_interval_seconds + "s").join("\n")
+      : "No hay creadores configurados.";
+    await interaction.reply({ content, ephemeral: true });
+    return;
+  }
+
   if (subcommand === "agregar") {
     const platform = interaction.options.getString("plataforma", true) as "youtube" | "twitch" | "kick" | "tiktok";
     if (platform === "tiktok") {
@@ -53,9 +61,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return;
     }
 
-    const existing = feeds.find(
-      (feed) => feed.platform === platform && feed.external_id === interaction.options.getString("id", true).trim(),
-    );
+    const externalId = interaction.options.getString("id", true).trim();
+    const existing = feeds.find((feed) => feed.platform === platform && feed.external_id === externalId);
     if (existing) {
       await interaction.reply({ content: "Ese creador ya está configurado en este servidor.", ephemeral: true });
       return;
@@ -65,7 +72,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     const feed = await createCreatorFeed({
       guildId: interaction.guild.id,
       platform,
-      externalId: interaction.options.getString("id", true).trim(),
+      externalId,
       displayName: interaction.options.getString("nombre", true).trim(),
       channelId: channel.id,
       mentionRoleId: interaction.options.getRole("rol")?.id ?? null,
@@ -78,14 +85,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const feed = feeds.find((item) => item.id === id);
   if (!feed) {
     await interaction.reply({ content: "No encontré una configuración con ese ID.", ephemeral: true });
-    return;
-  }
-
-  if (subcommand === "listar") {
-    const content = feeds.length
-      ? feeds.map((item) => item.id + " · " + item.display_name + " · " + item.platform + " · <#" + item.channel_id + "> · " + (item.enabled ? "Activo" : "Inactivo") + " · " + item.poll_interval_seconds + "s").join("\n")
-      : "No hay creadores configurados.";
-    await interaction.reply({ content, ephemeral: true });
     return;
   }
 
