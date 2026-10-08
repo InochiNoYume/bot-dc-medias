@@ -7,7 +7,7 @@ import {
   getAutomodConfig,
   upsertAutomodConfig,
 } from "../../modules/automod/repository.js";
-import { clearAutomodConfigCache } from "../../modules/automod/service.js";
+import { clearAutomodConfigCache, stopRaidProtection } from "../../modules/automod/service.js";
 
 export const data = new SlashCommandBuilder()
   .setName("automod")
@@ -126,7 +126,11 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
   const current = await getAutomodConfig(i.guild.id);
 
   if (subcommand === "activar" || subcommand === "desactivar") {
-    const config = await upsertAutomodConfig(i.guild.id, { enabled: subcommand === "activar" });
+    const enabled = subcommand === "activar";
+    if (!enabled) {
+      await stopRaidProtection(i.guild);
+    }
+    const config = await upsertAutomodConfig(i.guild.id, { enabled });
     clearAutomodConfigCache(i.guild.id);
     await i.reply({ content: "AutoMod " + (config.enabled ? "activado." : "desactivado."), ephemeral: true });
     return;
@@ -266,6 +270,10 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
   const timeout = i.options.getInteger("timeout");
   const lockdown = i.options.getBoolean("bloqueo");
 
+  if (!active) {
+    await stopRaidProtection(i.guild);
+  }
+
   await upsertAutomodConfig(i.guild.id, {
     raid_enabled: active,
     ...(entries !== null ? { raid_join_threshold: entries } : {}),
@@ -273,7 +281,6 @@ export async function execute(i: ChatInputCommandInteraction): Promise<void> {
     ...(action ? { raid_action: action } : {}),
     ...(timeout !== null ? { raid_timeout_seconds: timeout } : {}),
     ...(lockdown !== null ? { raid_lockdown: lockdown } : {}),
-    ...(active ? {} : { raid_active_until: null, raid_started_at: null, raid_join_count: 0 }),
   });
 
   clearAutomodConfigCache(i.guild.id);
