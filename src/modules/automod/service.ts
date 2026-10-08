@@ -14,6 +14,7 @@ import { sendGuildActionLog } from "../logging/service.js";
 const buckets = new Map<string, number[]>();
 const activeRaidTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const configCache = new Map<string, { config: AutomodConfig | null; expires: number }>();
+const MAX_SPAM_WINDOW_MS = 60_000;
 
 const normalize = (value: string): string =>
   value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -58,7 +59,7 @@ function spam(message: Message, max: number, seconds: number): boolean {
   const timestamps = (buckets.get(key) ?? []).filter((timestamp) => now - timestamp < windowMs);
   timestamps.push(now);
   buckets.set(key, timestamps);
-  trimBuckets(buckets, now, windowMs);
+  trimBuckets(buckets, now, MAX_SPAM_WINDOW_MS);
   return timestamps.length >= max;
 }
 
