@@ -53,7 +53,7 @@ async function listSuggestions(guildId: string): Promise<CommunitySuggestion[]> 
   return (data ?? []) as CommunitySuggestion[];
 }
 
-async function getSuggestion(guildId: string, id: string): Promise<CommunitySuggestion | null> {
+export async function getSuggestion(guildId: string, id: string): Promise<CommunitySuggestion | null> {
   const { data, error } = await supabase
     .from("community_suggestions")
     .select("*")
@@ -64,7 +64,7 @@ async function getSuggestion(guildId: string, id: string): Promise<CommunitySugg
   return data as CommunitySuggestion | null;
 }
 
-async function updateSuggestionStatus(guildId: string, id: string, status: SuggestionStatus): Promise<CommunitySuggestion> {
+export async function updateSuggestionStatus(guildId: string, id: string, status: SuggestionStatus): Promise<CommunitySuggestion> {
   const { data, error } = await supabase
     .from("community_suggestions")
     .update({ status, updated_at: new Date().toISOString() })
