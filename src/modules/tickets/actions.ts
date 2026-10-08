@@ -13,7 +13,7 @@ export async function getTicketById(guildId: string, ticketId: string): Promise<
   return data as TicketRecord | null;
 }
 
-export async function updateTicket(ticketId: string, changes: {
+export async function updateTicket(guildId: string, ticketId: string, changes: {
   status?: TicketStatus;
   priority?: TicketPriority;
   claimedBy?: string | null;
@@ -37,12 +37,13 @@ export async function updateTicket(ticketId: string, changes: {
     p.claimed_by = null;
     p.archived_at = null;
   }
-  const { data, error } = await supabase.from("tickets").update(p).eq("id", ticketId).select("*").single();
+  const { data, error } = await supabase.from("tickets").update(p).eq("guild_id", guildId).eq("id", ticketId).select("*").single();
   if (error) throw error;
   return data as TicketRecord;
 }
 
 export async function transitionTicket(input: {
+  guildId: string;
   ticketId: string;
   fromStatuses: TicketStatus[];
   toStatus: TicketStatus;
@@ -70,7 +71,7 @@ export async function transitionTicket(input: {
     payload.close_reason = input.closeReason ?? null;
   }
 
-  let query = supabase.from("tickets").update(payload).eq("id", input.ticketId).in("status", input.fromStatuses);
+  let query = supabase.from("tickets").update(payload).eq("guild_id", input.guildId).eq("id", input.ticketId).in("status", input.fromStatuses);
   if (input.expectedLastActivityAt !== undefined) {
     query = query.eq("last_activity_at", input.expectedLastActivityAt);
   }
@@ -84,18 +85,18 @@ export async function transitionTicket(input: {
   return data as TicketRecord;
 }
 
-export async function addTicketMember(ticketId: string, userId: string): Promise<void> {
+export async function addTicketMember(guildId: string, ticketId: string, userId: string): Promise<void> {
   const { error } = await supabase.from("ticket_members").upsert({ ticket_id: ticketId, user_id: userId });
   if (error) throw error;
 }
 
-export async function removeTicketMember(ticketId: string, userId: string): Promise<void> {
+export async function removeTicketMember(guildId: string, ticketId: string, userId: string): Promise<void> {
   const { error } = await supabase.from("ticket_members").delete().eq("ticket_id", ticketId).eq("user_id", userId);
   if (error) throw error;
 }
 
-export async function getTicketRating(ticketId: string): Promise<{ rating: number } | null> {
-  const { data, error } = await supabase.from("ticket_ratings").select("rating").eq("ticket_id", ticketId).maybeSingle();
+export async function getTicketRating(guildId: string, ticketId: string): Promise<{ rating: number } | null> {
+  const { data, error } = await supabase.from("ticket_ratings").select("rating").eq("guild_id", guildId).eq("ticket_id", ticketId).maybeSingle();
   if (error) throw error;
   return data as { rating: number } | null;
 }
@@ -116,10 +117,10 @@ export async function logTicketAction(input: { guildId: string; ticketId: string
   if (error) throw error;
 }
 
-export async function touchTicketActivity(ticketId: string): Promise<void> {
+export async function touchTicketActivity(guildId: string, ticketId: string): Promise<void> {
   const { error } = await supabase.from("tickets").update({
     last_activity_at: new Date().toISOString(),
-  }).eq("id", ticketId).in("status", ["open", "claimed"]);
+  }).eq("guild_id", guildId).eq("id", ticketId).in("status", ["open", "claimed"]);
   if (error) throw error;
 }
 
@@ -132,10 +133,11 @@ export interface TicketLogRecord {
   created_at: string;
 }
 
-export async function listTicketLogs(ticketId: string, limit = 10): Promise<TicketLogRecord[]> {
+export async function listTicketLogs(guildId: string, ticketId: string, limit = 10): Promise<TicketLogRecord[]> {
   const { data, error } = await supabase
     .from("ticket_logs")
     .select("id,ticket_id,actor_id,action,details,created_at")
+    .eq("guild_id", guildId)
     .eq("ticket_id", ticketId)
     .order("created_at", { ascending: false })
     .limit(limit);
