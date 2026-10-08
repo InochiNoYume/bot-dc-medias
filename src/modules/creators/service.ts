@@ -297,7 +297,7 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
       embeds: [embed],
     });
 
-    await markCreatorNotificationSent({
+    const markedSent = await markCreatorNotificationSent({
       feedId: feed.id,
       externalItemId: item.id,
       title: item.title,
@@ -305,6 +305,9 @@ async function checkFeed(client: Client, feed: CreatorFeed): Promise<void> {
       publishedAt: item.publishedAt,
       claimedAt: claimResult.claimedAt,
     });
+    if (!markedSent) {
+      throw new Error("CREATOR_NOTIFICATION_CLAIM_LOST");
+    }
 
     await updateCreatorFeed(feed.guild_id, feed.id, {
       last_external_item_id: item.id,
