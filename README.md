@@ -1,6 +1,6 @@
 # Bot DC Medias
 
-Multi-guild Discord bot for creator communities and development environments.
+Bot de Discord multi-servidor enfocado exclusivamente en **Tickets** y **Notificaciones**.
 
 ## Stack
 
@@ -8,85 +8,92 @@ Multi-guild Discord bot for creator communities and development environments.
 - TypeScript
 - Discord.js v14
 - Supabase PostgreSQL
-- GitHub Actions / host deployment
+- GitHub Actions / hosting externo
 
-## Principles
+## Funciones actuales
 
-- Runtime secrets live in environment variables.
-- Per-guild configuration lives in Supabase.
-- No production guild IDs, role IDs, channel IDs or category IDs are hard-coded.
-- The DEV guild is selected with `DEV_GUILD_ID`.
-- Features are implemented as isolated modules.
-- The backend uses the Supabase service-role key; it must never be exposed to browser or client-side code.
+### Tickets
 
-## Environment variables
+- Categorías de tickets por servidor.
+- Roles de atención por categoría.
+- Límite de tickets abiertos por usuario.
+- Prioridades: baja, normal, alta y urgente.
+- Paneles para abrir tickets.
+- Crear, configurar, listar y eliminar categorías.
+- Publicar y reparar paneles.
+- Tomar y liberar tickets.
+- Cerrar y reabrir tickets.
+- Motivo de cierre.
+- Gestión de usuarios dentro del ticket.
+- Historial y registro de acciones.
+- Transcripciones al cerrar.
+- Archivado de tickets cerrados.
+- Cierre automático por inactividad.
+- Valoración de atención de 1 a 5.
+- Protección multi-guild y operaciones atómicas para evitar duplicados o límites inconsistentes.
 
-Required:
+### Notificaciones
+
+- YouTube.
+- Twitch.
+- Kick.
+- TikTok queda preparado como plataforma, pero no se realiza scraping ni se simula una integración sin API/OAuth válido.
+- Configuración independiente por servidor.
+- Canal y rol de notificación por feed.
+- Activar/desactivar feeds.
+- Intervalo de comprobación configurable.
+- Dedupe y control de publicaciones repetidas.
+- Polling con protección contra solapamientos y reclamaciones concurrentes.
+
+## Seguridad y configuración
+
+- Los secretos se mantienen en variables de entorno.
+- La configuración de producción se almacena por `guild_id` en Supabase.
+- No se hardcodean IDs de servidores, canales, roles o categorías de producción.
+- El backend utiliza la clave `SUPABASE_SERVICE_ROLE_KEY`; nunca debe exponerse al cliente.
+
+## Variables de entorno
+
+Obligatorias:
 
 - `DISCORD_TOKEN`
 - `DISCORD_CLIENT_ID`
-- `DEV_GUILD_ID`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Optional creator integrations:
+Opcionales para notificaciones:
 
 - `TWITCH_CLIENT_ID`
 - `TWITCH_CLIENT_SECRET`
 - `KICK_CLIENT_ID`
 - `KICK_CLIENT_SECRET`
 
-Keep optional provider credentials paired. If a provider is not configured, its creator polling remains inactive.
+## Base de datos
 
-## Database
+Las migraciones de `supabase/migrations` deben aplicarse en orden en el proyecto de Supabase antes de usar el bot en un entorno nuevo.
 
-The active Supabase project is configured through `SUPABASE_URL`. Apply the SQL migrations in `supabase/migrations` in order before starting the bot in a new environment.
+## Desarrollo
 
-The bot uses the Supabase service role from the backend. Direct application-table access for `public`, `anon` and `authenticated` roles is revoked by the final security migration.
+```bash
+npm install
+npm run check
+npm run build
+npm run dev
+```
 
-## Development
-
-1. Copy `.env.example` to `.env`.
-2. Fill the required environment variables.
-3. Install dependencies with `npm install`.
-4. Run `npm run check`.
-5. Run `npm run build`.
-6. Run `npm run dev`.
-
-## Production
-
-Use Node.js 22 or newer.
-
-Set all required environment variables in the host's secret/environment-variable manager. Do not commit `.env` or service-role credentials.
-
-The production start command is:
+## Producción
 
 ```bash
 npm run build
 npm start
 ```
 
-The process should be configured to restart after an unexpected exit. On SIGINT/SIGTERM the bot destroys its Discord client and exits cleanly so the host can restart it when required.
+El archivo `.env` debe permanecer fuera del repositorio. En el hosting se deben configurar las variables de entorno de forma segura.
 
 ## CI
 
-GitHub Actions runs on pushes and pull requests targeting `main` and executes:
+GitHub Actions ejecuta `npm ci`, `npm run check` y `npm run build` en los cambios dirigidos a `main`.
 
-```bash
-npm install
-npm run check
-npm run build
-```
+## Alcance
 
-## Current modules
-
-- Core
-- Tickets
-- Moderation
-- Logs
-- AutoMod / Anti-raid
-- Creators
-- Community
-- Statistics
-
-All modules are designed for multi-guild operation with isolated configuration by `guild_id`.
+El bot ya no incluye comandos ni flujo activo de Moderación, AutoMod, Logs independientes, Community, Statistics ni otros módulos administrativos fuera de Tickets y Notificaciones. Los registros internos utilizados por Tickets forman parte del propio sistema de tickets.
